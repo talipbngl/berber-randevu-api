@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Berber Randevu Sistemi</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        h1 { text-align: center; color: #333; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="date"], input[type="text"], input[type="tel"], select, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+        #slot-list { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .slot-button { background-color: #f0f0f0; border: 1px solid #ddd; padding: 8px 15px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; }
+        .slot-button:hover { background-color: #e0e0e0; }
+        .slot-button.selected { background-color: #007bff; color: white; border-color: #007bff; }
+        #message { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>💈 Berber Randevu Sistemi</h1>
+
+    <form id="appointment-form">
+        <label for="date">1. Randevu Tarihi Seçin:</label>
+        <input type="date" id="date" required>
+
+        <label>2. Boş Saatler:</label>
+        <div id="slot-list">Lütfen bir tarih seçin.</div>
+        
+        <input type="hidden" id="selected-time" required>
+
+        <hr>
+        
+        <label for="name">3. Adınız Soyadınız:</label>
+        <input type="text" id="name" required>
+
+        <label for="phone">Telefon Numaranız (5XX...):</label>
+        <input type="tel" id="phone" required>
+
+        <label for="service">Hizmet Türü:</label>
+        <select id="service" required>
+            <option value="">Hizmet Seçiniz</option>
+            <option value="Sac Kesimi">Saç Kesimi</option>
+            <option value="Sakal Tras">Sakal Tıraşı</option>
+            <option value="Sac Sakal">Saç & Sakal</option>
+        </select>
+        
+        <div id="message"></div>
+
+        <button type="submit" id="submit-button" disabled>Randevu Al</button>
+    </form>
+
+    <script src="app.js"></script>
+</body>
+</html>

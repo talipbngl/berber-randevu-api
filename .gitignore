@@ -1,0 +1,12 @@
+# Node modules
+node_modules
+/public/app.js.map
+
+# Logs
+*.log
+
+# Dependency files
+package-lock.json
+
+# MongoDB Atlas Connection String'i içeren env dosyaları (Eğer varsa)
+.env
