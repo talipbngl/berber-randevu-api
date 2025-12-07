@@ -1,7 +1,7 @@
 // server.js
 
 const express = require('express');
-const mysql = require('mysql2');
+const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 
 const app = express();
