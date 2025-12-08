@@ -1,4 +1,4 @@
-// app.js - Frontend Logiği
+// app.js - Frontend Logiği (Geliştirilmiş Sürüm)
 
 // Elementleri seçme
 const form = document.getElementById('appointment-form');
@@ -7,8 +7,9 @@ const slotListDiv = document.getElementById('slot-list');
 const selectedTimeInput = document.getElementById('selected-time');
 const submitButton = document.getElementById('submit-button');
 const messageDiv = document.getElementById('message');
+const phoneInput = document.getElementById('phone'); // Yeni eklendi
 
-const API_BASE_URL = window.location.origin; // Render'daki canlı URL'yi kullanır
+const API_BASE_URL = window.location.origin;
 
 let selectedSlot = null;
 
@@ -21,6 +22,7 @@ let selectedSlot = null;
  */
 function displayMessage(text, type) {
     messageDiv.textContent = text;
+    // Tailwind sınıfları güncellendi
     messageDiv.className = `p-3 rounded-lg text-center font-bold transition duration-300 ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
     messageDiv.classList.remove('hidden');
 }
@@ -31,6 +33,8 @@ function displayMessage(text, type) {
  */
 function renderSlots(slots) {
     slotListDiv.innerHTML = '';
+    // Yükleme sırasında eklenen ortalama sınıfını kaldır
+    slotListDiv.classList.remove('justify-center'); 
     
     if (slots.length === 0) {
         slotListDiv.textContent = 'Bu tarihte boş randevu saati bulunmamaktadır.';
@@ -42,21 +46,24 @@ function renderSlots(slots) {
         const button = document.createElement('button');
         button.type = 'button';
         button.textContent = time;
-        button.classList.add('slot-button', 'px-4', 'py-2', 'bg-gray-200', 'text-gray-800', 'rounded-full', 'hover:bg-blue-200', 'transition', 'duration-150');
+        // Tailwind sınıfları eklendi
+        button.classList.add('slot-button', 'px-4', 'py-2', 'bg-gray-200', 'text-gray-800', 'rounded-full', 'hover:bg-blue-200', 'transition', 'duration-150', 'shadow-sm');
         
         button.addEventListener('click', () => {
             // Seçili slotu güncelle
             if (selectedSlot) {
+                // Seçili durumdan çıkarırken Tailwind sınıflarını ayarla
                 selectedSlot.classList.remove('selected', 'bg-blue-500', 'text-white');
-                selectedSlot.classList.add('bg-gray-200');
+                selectedSlot.classList.add('bg-gray-200', 'text-gray-800');
             }
             
             selectedSlot = button;
+            // Seçili duruma geçerken Tailwind sınıflarını ayarla
             selectedSlot.classList.add('selected', 'bg-blue-500', 'text-white');
-            selectedSlot.classList.remove('bg-gray-200');
+            selectedSlot.classList.remove('bg-gray-200', 'text-gray-800');
 
             selectedTimeInput.value = time;
-            submitButton.disabled = false; // Saat seçildi, butonu aktif et
+            submitButton.disabled = false;
         });
 
         slotListDiv.appendChild(button);
@@ -73,17 +80,26 @@ function renderSlots(slots) {
  */
 async function fetchAvailableSlots() {
     const selectedDate = dateInput.value;
-    selectedTimeInput.value = ''; // Yeni tarih seçildi, saati sıfırla
-    submitButton.disabled = true; // Yeni tarih seçildi, butonu devre dışı bırak
+    selectedTimeInput.value = ''; 
+    submitButton.disabled = true; 
     selectedSlot = null;
-    messageDiv.classList.add('hidden'); // Mesajı gizle
+    messageDiv.classList.add('hidden'); 
 
     if (!selectedDate) {
         slotListDiv.textContent = 'Lütfen bir tarih seçin.';
         return;
     }
 
-    slotListDiv.textContent = 'Saatler yükleniyor...';
+    // YÜKLEME SPINNER'I EKLENDİ (Efektiflik İçin)
+    slotListDiv.classList.add('justify-center');
+    slotListDiv.innerHTML = `
+        <div class="flex items-center space-x-2 text-blue-500">
+            <svg class="animate-spin h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> 
+            Saatler yükleniyor, lütfen bekleyin...
+        </div>`;
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/slots?date=${selectedDate}`);
@@ -92,7 +108,6 @@ async function fetchAvailableSlots() {
         if (response.ok) {
             renderSlots(data.slots);
         } else {
-            // Sunucu tarafında hata (400, 500 vb.)
             slotListDiv.textContent = data.message || 'Saatler yüklenirken bir sorun oluştu.';
         }
     } catch (error) {
@@ -137,7 +152,7 @@ async function submitAppointment(event) {
         if (response.ok) {
             // Başarılı Randevu
             displayMessage(`Randevunuz başarıyla oluşturuldu! Saat: ${appointmentData.time}`, 'success');
-            form.reset(); // Formu sıfırla
+            form.reset(); 
             selectedSlot = null;
             slotListDiv.textContent = 'Randevu alındı. Yeni randevu için tarih seçin.';
         } else {
@@ -149,7 +164,6 @@ async function submitAppointment(event) {
         displayMessage('Ağ hatası: Sunucuya ulaşılamadı.', 'error');
     } finally {
         submitButton.textContent = 'Randevuyu Tamamla';
-        // Hata durumunda yeniden denemeye izin vermek için butonu aktif et
         if (selectedTimeInput.value) {
              submitButton.disabled = false; 
         }
@@ -158,6 +172,28 @@ async function submitAppointment(event) {
 
 
 // --- Olay Dinleyicileri ---
+
+// TELEFON NUMARASI FORMATLAMA EKLENDİ (Efektiflik İçin)
+phoneInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, ''); 
+    let formattedValue = '';
+
+    if (value.length > 0) {
+        formattedValue += value.substring(0, 3);
+    }
+    if (value.length > 3) {
+        formattedValue += ' ' + value.substring(3, 6);
+    }
+    if (value.length > 6) {
+        formattedValue += ' ' + value.substring(6, 8);
+    }
+    if (value.length > 8) {
+        formattedValue += ' ' + value.substring(8, 10);
+    }
+
+    e.target.value = formattedValue.substring(0, 12); // Max 12 karakter (555 123 45 67)
+});
+
 
 // Tarih değiştiğinde boş saatleri otomatik yükle
 dateInput.addEventListener('change', fetchAvailableSlots);
