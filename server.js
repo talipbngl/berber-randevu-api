@@ -1,83 +1,124 @@
 // server.js
 
 const express = require('express');
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Mongoose tanımlandı
 const bodyParser = require('body-parser');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Render, PORT'u ortam değişkeni olarak sağlar
 
-// Middleware'ler (Uygulama Ortası Yazılımlar)
+// *** 1. Mongo/Mongoose Şemaları ve Modelleri (Örnek) ***
+// MySQL'deki tabloların karşılığı olan Mongoose şemalarını tanımlamalıyız.
+// Bu şemalar, projenizde büyük ihtimalle 'models/Appointment.js' gibi ayrı dosyalarda tutulur.
+// Basitlik için buraya ekliyorum.
+
+// Kullanıcı Şeması (Users tablosunun karşılığı)
+const UserSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    phone_number: { type: String, required: true, unique: true },
+});
+const User = mongoose.model('User', UserSchema);
+
+// Randevu Şeması (Appointments tablosunun karşılığı)
+const AppointmentSchema = new mongoose.Schema({
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    start_time: { type: Date, required: true, unique: true }, // Randevu saati tek olmalı
+    end_time: { type: Date, required: true },
+    service_type: { type: String, required: true },
+});
+const Appointment = mongoose.model('Appointment', AppointmentSchema);
+
+// Çalışma Saatleri Şeması (Schedules tablosunun karşılığı)
+// MySQL'deki sorgularınızı basitleştirmek için bunu da dahil ediyoruz.
+const ScheduleSchema = new mongoose.Schema({
+    day_of_week: { type: Number, required: true, min: 1, max: 7 }, // 1-Pazartesi, 7-Pazar
+    barber_id: { type: Number, default: 1 },
+    start_shift: { type: String, required: true }, // Örn: "09:00"
+    end_shift: { type: String, required: true },   // Örn: "18:00"
+});
+const Schedule = mongoose.model('Schedule', ScheduleSchema);
+
+
+// *** 2. MongoDB Bağlantısı ***
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+    console.error('HATA: MONGODB_URI ortam değişkeni tanımlanmamış. Bağlantı yapılamıyor.');
+    // Bu, Render'da MONGODB_URI değerini ayarlamadıysanız ortaya çıkar.
+}
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✅ MongoDB bağlantısı başarılı!'))
+  .catch(err => {
+    console.error('❌ MongoDB bağlantı hatası:', err.message);
+    // Bağlantı başarısız olursa sunucunun başlamasını durdurabiliriz
+    // process.exit(1); 
+  });
+
+// --- Middleware'ler ---
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// --- MariaDB Bağlantı Ayarları (XAMPP Varsayılanları) ---
-const db = mysql.createConnection({
-    host: 'localhost',         // XAMPP varsayılanı
-    user: 'root',              // XAMPP varsayılan kullanıcı
-    password: '',              // XAMPP varsayılan parolası (boş)
-    database: 'randevu_db'     // Oluşturduğumuz veritabanı adı
-});
+// --- API Yönlendirmeleri (Routes) ve Sorgu Değişiklikleri ---
 
-// Veritabanına Bağlanma Kontrolü
-db.connect(err => {
-    if (err) {
-        console.error('MariaDB bağlantı hatası: ' + err.stack);
-        return;
-    }
-    console.log('MariaDB başarıyla bağlandı, ID: ' + db.threadId);
-});
-
-// --- API Yönlendirmeleri (Routes) ---
 app.use(express.static('public'));
 app.get('/', (req, res) => {
     res.send('Berber Randevu API sunucusu çalışıyor!');
 });
+
+// GET /api/slots: Boş randevu saatlerini çekme (MySQL sorguları Mongoose ile değiştirildi)
 app.get('/api/slots', async (req, res) => {
-    const { date } = req.query; // Query'den tarihi alıyoruz
+    const { date } = req.query; 
     
     if (!date) {
         return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
     }
 
     try {
-        const dayOfWeek = new Date(date).getDay() + 1; // 1 (Pazartesi) - 7 (Pazar)
+        const queryDate = new Date(date);
+        // getDay() 0 (Pazar) - 6 (Cumartesi) döndürür. MySQL'deki 1-7'ye uydurmak için:
+        // Pazartesi'yi 1, Pazar'ı 7 yapalım.
+        const dayOfWeek = (queryDate.getDay() === 0) ? 7 : queryDate.getDay(); 
 
-        // 1. O günün çalışma programını çekme
-        const [scheduleResult] = await db.promise().query(
-            'SELECT start_shift, end_shift FROM Schedules WHERE day_of_week = ? AND barber_id = 1',
-            [dayOfWeek]
-        );
+        // 1. O günün çalışma programını çekme (MySQL sorgusu yerine Mongoose find)
+        const scheduleResult = await Schedule.findOne({ 
+            day_of_week: dayOfWeek, 
+            barber_id: 1 
+        });
 
-        if (scheduleResult.length === 0) {
+        if (!scheduleResult) {
             return res.send({ date: date, slots: [], message: 'Bu günde dükkan kapalıdır.' });
         }
 
-        const { start_shift, end_shift } = scheduleResult[0];
+        const { start_shift, end_shift } = scheduleResult;
         const availableSlots = [];
         
-        // Başlangıç ve bitiş saatlerini milisaniye cinsinden al
         let currentTime = new Date(`${date} ${start_shift}`);
         const endTime = new Date(`${date} ${end_shift}`);
 
-        // 2. Olası tüm yarım saatlik dilimleri oluşturma
+        // 2. Olası tüm yarım saatlik dilimleri oluşturma (Mantık aynı kaldı)
         while (currentTime < endTime) {
             const slotStartTime = currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             
-            // Eğer dilimin bitişi çalışma saatinden sonraya taşıyorsa dur
             if (new Date(currentTime.getTime() + 30 * 60000) > endTime) break;
 
             availableSlots.push(slotStartTime);
-            currentTime = new Date(currentTime.getTime() + 30 * 60000); // 30 dakika ekle
+            currentTime = new Date(currentTime.getTime() + 30 * 60000); 
         }
 
-        // 3. O gün için mevcut alınmış randevuları çekme
-        const [bookedAppointments] = await db.promise().query(
-            'SELECT DATE_FORMAT(start_time, "%H:%i") AS start_time_str FROM Appointments WHERE DATE(start_time) = ?',
-            [date]
-        );
+        // 3. O gün için mevcut alınmış randevuları çekme (MySQL sorgusu yerine Mongoose find)
+        // MongoDB'de tarih sorgulama biraz farklıdır (gte / lt kullanılır)
+        const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
+        const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
+
+        const bookedAppointments = await Appointment.find({
+            start_time: { $gte: startOfDay, $lte: endOfDay }
+        });
         
-        const bookedTimes = bookedAppointments.map(app => app.start_time_str);
+        // Randevu saatlerini HH:MM formatına çevirme
+        const bookedTimes = bookedAppointments.map(app => 
+            app.start_time.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+        );
 
         // 4. Boş olanları filtreleme
         const finalSlots = availableSlots.filter(slot => !bookedTimes.includes(slot));
@@ -92,86 +133,62 @@ app.get('/api/slots', async (req, res) => {
         res.status(500).send({ message: 'Sunucu hatası oluştu.' });
     }
 });
+
+// POST /api/book: Randevu kaydetme (MySQL sorguları Mongoose ile değiştirildi)
 app.post('/api/book', async (req, res) => {
     const { name, phone_number, date, time, service_type } = req.body;
 
     if (!name || !phone_number || !date || !time || !service_type) {
-        return res.status(400).send({ message: 'Lütfen tüm alanları (isim, telefon, tarih, saat, hizmet türü) doldurun.' });
+        return res.status(400).send({ message: 'Lütfen tüm alanları doldurun.' });
     }
 
-    // Randevu başlangıç zamanını ve bitiş zamanını hesaplama
-    const startDateTime = `${date} ${time}:00`;
-    
-    // Randevu süresi 30 dakika olduğu için bitiş zamanını hesaplayalım
     const [hour, minute] = time.split(':').map(Number);
-    const startMoment = new Date(date);
-    startMoment.setHours(hour, minute, 0, 0); // Başlangıcı ayarla
+    const startDateTime = new Date(date);
+    startDateTime.setHours(hour, minute, 0, 0); 
     
     // 30 dakika ekle
-    const endMoment = new Date(startMoment.getTime() + 30 * 60000); 
-    const endDateTime = `${date} ${endMoment.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
+    const endDateTime = new Date(startDateTime.getTime() + 30 * 60000); 
     
-    // Veritabanı işlemleri (Transactions) ile çakışmayı kontrol etme ve kaydetme
     try {
-        // 1. Kullanıcıyı bul veya oluştur
-        let userId;
-        
-        // Telefon numarasına göre kullanıcıyı arıyoruz
-        const [userResult] = await db.promise().query(
-            'SELECT user_id FROM Users WHERE phone_number = ?',
-            [phone_number]
+        // 1. Kullanıcıyı bul veya oluştur (Mongoose upsert/find)
+        let user = await User.findOneAndUpdate(
+            { phone_number: phone_number }, // Bu telefonda kullanıcı var mı?
+            { name: name },                 // Varsa adını güncelle
+            { new: true, upsert: true, setDefaultsOnInsert: true } // Yoksa oluştur
         );
+        let userId = user._id;
 
-        if (userResult.length > 0) {
-            userId = userResult[0].user_id;
-        } else {
-            // Yeni kullanıcı oluşturma
-            const [insertUserResult] = await db.promise().query(
-                'INSERT INTO Users (name, phone_number) VALUES (?, ?)',
-                [name, phone_number]
-            );
-            userId = insertUserResult.insertId;
-        }
+        // 2. Randevu Çakışma Kontrolü ve Kaydetme
+        // Mongoose'un `unique: true` kısıtlaması, çakışmayı otomatik yakalar.
+        const newAppointment = new Appointment({
+            user_id: userId,
+            start_time: startDateTime,
+            end_time: endDateTime,
+            service_type: service_type,
+        });
 
-        // 2. Randevu Çakışma Kontrolü (Aynı saatte başka randevu var mı?)
-        // Bu sorgu, randevular tablosundaki 'start_time' sütununun UNIQUE olması nedeniyle zaten koruma sağlar.
-        // Ancak biz ek olarak okunabilirlik ve özel bir hata mesajı için manuel kontrol yapalım.
-        const [conflictCheck] = await db.promise().query(
-            'SELECT appointment_id FROM Appointments WHERE start_time = ?',
-            [startDateTime]
-        );
-
-        if (conflictCheck.length > 0) {
-            return res.status(409).send({ 
-                message: 'Üzgünüz, seçtiğiniz randevu saati kısa süre önce dolmuştur. Lütfen başka bir saat seçin.' 
-            });
-        }
-        
-        // 3. Randevuyu Kaydetme
-        const [insertAppointmentResult] = await db.promise().query(
-            'INSERT INTO Appointments (user_id, start_time, end_time, service_type) VALUES (?, ?, ?, ?)',
-            [userId, startDateTime, endDateTime, service_type]
-        );
+        await newAppointment.save(); // Kaydetme işlemi, çakışma olursa hata fırlatır.
 
         res.status(201).send({
             message: 'Randevunuz başarıyla oluşturuldu.',
-            appointment_id: insertAppointmentResult.insertId,
-            booked_time: startDateTime
+            appointment_id: newAppointment._id,
+            booked_time: startDateTime.toISOString()
         });
 
     } catch (error) {
         console.error('Randevu kaydı sırasında hata:', error);
         
-        // Veritabanı hata kodu 1062 (Duplicate entry - Tekrarlanan giriş) özel olarak ele alınabilir.
-        if (error.code === 'ER_DUP_ENTRY') {
-             return res.status(409).send({ 
-                message: 'Bu saat dilimi zaten dolu, çakışma hatası.' 
+        // MongoDB hata kodu 11000 (Duplicate Key Error - Çakışma)
+        if (error.code === 11000) {
+            return res.status(409).send({ 
+                message: 'Üzgünüz, seçtiğiniz randevu saati kısa süre önce dolmuştur. Lütfen başka bir saat seçin.' 
             });
         }
         
         res.status(500).send({ message: 'Sunucu hatası oluştu, randevu kaydedilemedi.' });
     }
 });
+
 
 // Sunucuyu Başlatma
 app.listen(PORT, () => {
