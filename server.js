@@ -1,25 +1,20 @@
 // server.js
-
+require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose'); // Mongoose tanımlandı
+const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Render, PORT'u ortam değişkeni olarak sağlar
+const PORT = process.env.PORT || 3000; 
 
-// *** 1. Mongo/Mongoose Şemaları ve Modelleri (Örnek) ***
-// MySQL'deki tabloların karşılığı olan Mongoose şemalarını tanımlamalıyız.
-// Bu şemalar, projenizde büyük ihtimalle 'models/Appointment.js' gibi ayrı dosyalarda tutulur.
-// Basitlik için buraya ekliyorum.
 
-// Kullanıcı Şeması (Users tablosunun karşılığı)
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     phone_number: { type: String, required: true, unique: true },
 });
 const User = mongoose.model('User', UserSchema);
 
-// Randevu Şeması (Appointments tablosunun karşılığı)
+
 const AppointmentSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     start_time: { type: Date, required: true, unique: true }, // Randevu saati tek olmalı
