@@ -1,206 +1,172 @@
-// server.js - PostgreSQL ve Render Uyumlu Sürüm
+// app.js - Frontend Logiği
 
-const express = require('express');
-const { Pool } = require('pg');
-const bodyParser = require('body-parser');
-const path = require('path');
+// Elementleri seçme
+const form = document.getElementById('appointment-form');
+const dateInput = document.getElementById('date');
+const slotListDiv = document.getElementById('slot-list');
+const selectedTimeInput = document.getElementById('selected-time');
+const submitButton = document.getElementById('submit-button');
+const messageDiv = document.getElementById('message');
 
-const app = express();
-// Render, otomatik olarak bir PORT atar. Lokal test için 3000 kullanılır.
-const PORT = process.env.PORT || 3000;
+const API_BASE_URL = window.location.origin; // Render'daki canlı URL'yi kullanır
 
-// PostgreSQL Bağlantısı
-// DATABASE_URL: Render'da otomatik olarak atanacak bağlantı dizesi
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/randevu_db';
+let selectedSlot = null;
 
-const pool = new Pool({
-    connectionString: connectionString,
-    // Render'da SSL/TLS kullanılması gerekebilir (Canlıya alırken).
-    // Local test için bu satırı yorum satırına alabilirsiniz.
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
+// --- Yardımcı Fonksiyonlar ---
 
-// Veritabanına Bağlanma Kontrolü (PostgreSQL)
-pool.connect((err, client, done) => {
-    if (err) {
-        console.error('PostgreSQL bağlantı hatası:', err.stack);
+/**
+ * Mesaj kutusunu günceller ve görünür/gizli yapar.
+ * @param {string} text Gösterilecek mesaj metni.
+ * @param {string} type 'success' veya 'error'.
+ */
+function displayMessage(text, type) {
+    messageDiv.textContent = text;
+    messageDiv.className = `p-3 rounded-lg text-center font-bold transition duration-300 ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+    messageDiv.classList.remove('hidden');
+}
+
+/**
+ * Slotları listeler ve tıklama olaylarını ayarlar.
+ * @param {Array<string>} slots HH:MM formatındaki saat dilimleri.
+ */
+function renderSlots(slots) {
+    slotListDiv.innerHTML = '';
+    
+    if (slots.length === 0) {
+        slotListDiv.textContent = 'Bu tarihte boş randevu saati bulunmamaktadır.';
+        submitButton.disabled = true;
         return;
     }
-    console.log('PostgreSQL başarıyla bağlandı.');
-    done(); 
-});
 
-
-// Middleware'ler (Uygulama Ortası Yazılımlar)
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-// Statik dosyaları (HTML, CSS, JS) 'public' klasöründen sunar
-app.use(express.static('public'));
-
-
-// ----------------------------------------------------------------------
-// API Yönlendirmeleri (Routes)
-// ----------------------------------------------------------------------
-
-
-/**
- * Boş randevu saatlerini döndürür.
- * Parametre: date (YYYY-MM-DD formatında)
- * Örnek: https://yoursite.onrender.com/api/slots?date=2025-12-10
- */
-app.get('/api/slots', async (req, res) => {
-    const { date } = req.query; // Query'den tarihi alıyoruz
-    
-    if (!date) {
-        return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
-    }
-
-    try {
-        // Javascript'te 0=Pazar, 1=Pazartesi. PostgreSQL'de 1=Pazartesi, 7=Pazar için düzeltme yapıldı.
-        const jsDay = new Date(date).getDay();
-        const pgDayOfWeek = jsDay === 0 ? 7 : jsDay; 
-
-        // 1. O günün çalışma programını çekme (PostgreSQL $1 formatı)
-        const scheduleQueryResult = await pool.query(
-            'SELECT start_shift, end_shift FROM Schedules WHERE day_of_week = $1 AND barber_id = 1',
-            [pgDayOfWeek]
-        );
-        const scheduleResult = scheduleQueryResult.rows; // PostgreSQL sonuçları .rows altında gelir
-
-        if (scheduleResult.length === 0) {
-            return res.send({ date: date, slots: [], message: 'Bu günde dükkan kapalıdır.' });
-        }
-
-        const { start_shift, end_shift } = scheduleResult[0];
-        const availableSlots = [];
+    slots.forEach(time => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = time;
+        button.classList.add('slot-button', 'px-4', 'py-2', 'bg-gray-200', 'text-gray-800', 'rounded-full', 'hover:bg-blue-200', 'transition', 'duration-150');
         
-        let currentTime = new Date(`${date} ${start_shift}`);
-        const endTime = new Date(`${date} ${end_shift}`);
-
-        // 2. Olası tüm yarım saatlik dilimleri oluşturma
-        while (currentTime < endTime) {
-            const slotStartTime = currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        button.addEventListener('click', () => {
+            // Seçili slotu güncelle
+            if (selectedSlot) {
+                selectedSlot.classList.remove('selected', 'bg-blue-500', 'text-white');
+                selectedSlot.classList.add('bg-gray-200');
+            }
             
-            if (new Date(currentTime.getTime() + 30 * 60000) > endTime) break;
+            selectedSlot = button;
+            selectedSlot.classList.add('selected', 'bg-blue-500', 'text-white');
+            selectedSlot.classList.remove('bg-gray-200');
 
-            availableSlots.push(slotStartTime);
-            currentTime = new Date(currentTime.getTime() + 30 * 60000); // 30 dakika ekle
-        }
-
-        // 3. O gün için mevcut alınmış randevuları çekme
-        // PostgreSQL'de date formatlama biraz farklıdır.
-        const bookedAppointmentsQuery = await pool.query(
-            'SELECT TO_CHAR(start_time, \'HH24:MI\') AS start_time_str FROM Appointments WHERE DATE(start_time) = $1',
-            [date]
-        );
-        
-        const bookedTimes = bookedAppointmentsQuery.rows.map(app => app.start_time_str);
-
-        // 4. Boş olanları filtreleme
-        const finalSlots = availableSlots.filter(slot => !bookedTimes.includes(slot));
-
-        res.send({ 
-            date: date, 
-            slots: finalSlots 
+            selectedTimeInput.value = time;
+            submitButton.disabled = false; // Saat seçildi, butonu aktif et
         });
 
-    } catch (error) {
-        console.error('Randevu saatleri çekilirken hata:', error);
-        res.status(500).send({ message: 'Sunucu hatası oluştu.' });
-    }
-});
+        slotListDiv.appendChild(button);
+    });
 
+    submitButton.disabled = !selectedSlot;
+}
+
+
+// --- API Fonksiyonları ---
 
 /**
- * Yeni randevu kaydeder (POST /api/book)
+ * Seçilen tarihe ait boş saat dilimlerini backend'den çeker.
  */
-app.post('/api/book', async (req, res) => {
-    const { name, phone_number, date, time, service_type } = req.body;
+async function fetchAvailableSlots() {
+    const selectedDate = dateInput.value;
+    selectedTimeInput.value = ''; // Yeni tarih seçildi, saati sıfırla
+    submitButton.disabled = true; // Yeni tarih seçildi, butonu devre dışı bırak
+    selectedSlot = null;
+    messageDiv.classList.add('hidden'); // Mesajı gizle
 
-    if (!name || !phone_number || !date || !time || !service_type) {
-        return res.status(400).send({ message: 'Lütfen tüm alanları doldurun.' });
+    if (!selectedDate) {
+        slotListDiv.textContent = 'Lütfen bir tarih seçin.';
+        return;
     }
 
-    const startDateTime = `${date} ${time}:00`;
-    
-    // Randevu süresi 30 dakika olduğu için bitiş zamanını hesaplama
-    const [hour, minute] = time.split(':').map(Number);
-    const startMoment = new Date(date);
-    startMoment.setHours(hour, minute, 0, 0); 
-    const endMoment = new Date(startMoment.getTime() + 30 * 60000); 
-    const endDateTime = `${date} ${endMoment.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
-    
+    slotListDiv.textContent = 'Saatler yükleniyor...';
     
     try {
-        // 1. Kullanıcıyı bul veya oluştur
-        let userId;
-        
-        const userQueryResult = await pool.query(
-            'SELECT user_id FROM Users WHERE phone_number = $1',
-            [phone_number]
-        );
-        const userResult = userQueryResult.rows;
+        const response = await fetch(`${API_BASE_URL}/api/slots?date=${selectedDate}`);
+        const data = await response.json();
 
-        if (userResult.length > 0) {
-            userId = userResult[0].user_id;
+        if (response.ok) {
+            renderSlots(data.slots);
         } else {
-            // Yeni kullanıcı oluşturma (PostgreSQL'de RETURNING kullanılır)
-            const insertUserResult = await pool.query(
-                'INSERT INTO Users (name, phone_number) VALUES ($1, $2) RETURNING user_id',
-                [name, phone_number]
-            );
-            userId = insertUserResult.rows[0].user_id;
+            // Sunucu tarafında hata (400, 500 vb.)
+            slotListDiv.textContent = data.message || 'Saatler yüklenirken bir sorun oluştu.';
         }
+    } catch (error) {
+        console.error('API Çağrı Hatası:', error);
+        slotListDiv.textContent = 'Sunucuya erişilemiyor veya ağ hatası var.';
+    }
+}
 
-        // 2. Randevu Çakışma Kontrolü (Aynı saatte başka randevu var mı?)
-        // Bu sorgu, UNIQUE kısıtlamasına rağmen okunabilirlik için yapılır.
-        const conflictCheck = await pool.query(
-            'SELECT appointment_id FROM Appointments WHERE start_time = $1',
-            [startDateTime]
-        );
+/**
+ * Randevu alma işlemini backend'e gönderir.
+ */
+async function submitAppointment(event) {
+    event.preventDefault();
 
-        if (conflictCheck.rows.length > 0) {
-            return res.status(409).send({ 
-                message: 'Üzgünüz, seçtiğiniz randevu saati kısa süre önce dolmuştur.' 
-            });
-        }
-        
-        // 3. Randevuyu Kaydetme
-        const insertAppointmentResult = await pool.query(
-            'INSERT INTO Appointments (user_id, start_time, end_time, service_type) VALUES ($1, $2, $3, $4) RETURNING appointment_id',
-            [userId, startDateTime, endDateTime, service_type]
-        );
+    if (!selectedTimeInput.value) {
+        displayMessage('Lütfen boş bir saat seçiniz.', 'error');
+        return;
+    }
 
-        res.status(201).send({
-            message: 'Randevunuz başarıyla oluşturuldu.',
-            appointment_id: insertAppointmentResult.rows[0].appointment_id,
-            booked_time: startDateTime
+    submitButton.disabled = true;
+    submitButton.textContent = 'Randevu Alınıyor...';
+
+    const appointmentData = {
+        name: document.getElementById('name').value,
+        phone_number: document.getElementById('phone').value.replace(/\s/g, ''), // Boşlukları kaldır
+        date: dateInput.value,
+        time: selectedTimeInput.value,
+        service_type: document.getElementById('service').value,
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/book`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(appointmentData),
         });
 
-    } catch (error) {
-        console.error('Randevu kaydı sırasında hata:', error);
-        
-        // PostgreSQL hata kodu 23505 (unique_violation) özel olarak ele alınabilir.
-        if (error.code === '23505') {
-             return res.status(409).send({ 
-                message: 'Bu saat dilimi zaten dolu, çakışma hatası.' 
-            });
+        const data = await response.json();
+
+        if (response.ok) {
+            // Başarılı Randevu
+            displayMessage(`Randevunuz başarıyla oluşturuldu! Saat: ${appointmentData.time}`, 'success');
+            form.reset(); // Formu sıfırla
+            selectedSlot = null;
+            slotListDiv.textContent = 'Randevu alındı. Yeni randevu için tarih seçin.';
+        } else {
+            // Hata Durumları (400, 409, 500)
+            displayMessage(data.message || 'Randevu alınırken beklenmedik bir hata oluştu.', 'error');
         }
-        
-        res.status(500).send({ message: 'Sunucu hatası oluştu, randevu kaydedilemedi.' });
+    } catch (error) {
+        console.error('API Randevu Gönderme Hatası:', error);
+        displayMessage('Ağ hatası: Sunucuya ulaşılamadı.', 'error');
+    } finally {
+        submitButton.textContent = 'Randevuyu Tamamla';
+        // Hata durumunda yeniden denemeye izin vermek için butonu aktif et
+        if (selectedTimeInput.value) {
+             submitButton.disabled = false; 
+        }
     }
-});
+}
 
 
-// Ana sayfayı (index.html) gösterme (express.static ile zaten sunuluyor)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// --- Olay Dinleyicileri ---
 
+// Tarih değiştiğinde boş saatleri otomatik yükle
+dateInput.addEventListener('change', fetchAvailableSlots);
 
-// Sunucuyu Başlatma
-app.listen(PORT, () => {
-    console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor...`);
+// Form gönderildiğinde randevu işlemini başlat
+form.addEventListener('submit', submitAppointment);
+
+// Sayfa yüklendiğinde bugünün tarihinden önceki tarihleri seçimi engelle
+window.addEventListener('load', () => {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.setAttribute('min', today);
 });
