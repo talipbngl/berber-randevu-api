@@ -8,16 +8,8 @@ const Schedule = require('../models/Schedule');
 
 // Yardımcı fonksiyon: Hizmet süresini dakika cinsinden döndürür
 const getServiceDurationMinutes = (serviceType) => {
-    switch (serviceType) {
-        case 'Sac Kesimi':
-        case 'Sakal Tras':
-            return 30;
-        case 'Sac Sakal':
-            // Saç & Sakal için 60 dakika süresini sabitliyoruz
-            return 60; 
-        default:
-            return 30; 
-    }
+   
+    return 30; 
 }
 
 

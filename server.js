@@ -7,6 +7,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const path = require('path'); // Frontend dosyaları için
 const appointmentRoutes = require('./routes/appointmentRoutes'); // Yönlendirmeleri içeri aktarma
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,8 @@ app.use(express.static('public'));
 
 // --- API Yönlendirmesi ---
 app.use('/api', appointmentRoutes); // Tüm /api istekleri appointmentRoutes'a yönlendirilir
+app.use('/api/admin', adminRoutes); // YENİ: Admin rotasını ekle
+app.use('/api/admin', adminRoutes);
 
 // Ana sayfayı (index.html) sunma
 app.get('/', (req, res) => {
