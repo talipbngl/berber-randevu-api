@@ -80,36 +80,48 @@ function displayMessage(text, type) {
     messageDiv.classList.remove('hidden');
 }
 
-function renderSlots(slots) {
-    // ... (Slot rendering mantığı aynı kaldı) ...
+function renderSlots(allSlots, bookedSlots) {
     slotListDiv.innerHTML = '';
     slotListDiv.classList.remove('justify-center'); 
     
-    if (slots.length === 0) {
-        slotListDiv.textContent = 'Bu tarihte boş randevu saati bulunmamaktadır.';
+    if (allSlots.length === 0) {
+        slotListDiv.textContent = 'Bu tarihte boş/tanımlı randevu saati bulunmamaktadır.';
         nextStep1Button.disabled = true;
         return;
     }
 
-    slots.forEach(time => {
+    allSlots.forEach(time => {
+        const isBooked = bookedSlots.includes(time);
         const button = document.createElement('button');
+        
         button.type = 'button';
         button.textContent = time;
-        button.classList.add('slot-button', 'px-4', 'py-2', 'bg-gray-200', 'text-gray-800', 'rounded-full', 'hover:bg-blue-200', 'transition', 'duration-150', 'shadow-sm');
-        
-        button.addEventListener('click', () => {
-            if (selectedSlot) {
-                selectedSlot.classList.remove('selected');
-                selectedSlot.classList.add('bg-gray-200', 'text-gray-800');
-            }
-            
-            selectedSlot = button;
-            selectedSlot.classList.add('selected');
-            selectedSlot.classList.remove('bg-gray-200', 'text-gray-800');
+        // Tailwind sınıfları (Yeni HTML ile uyumlu)
+        button.classList.add('slot-button', 'px-4', 'py-2', 'rounded-full', 'transition', 'duration-150', 'shadow-sm', 'text-base');
 
-            selectedTimeInput.value = time;
-            nextStep1Button.disabled = false; // Saat seçilince Adım 2'ye geçişi aktif et
-        });
+        if (isBooked) {
+            // Dolu slot stili
+            button.classList.add('disabled');
+            button.disabled = true;
+        } else {
+            // Boş slot stili
+            button.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-blue-200');
+
+            button.addEventListener('click', () => {
+                // Seçili slotu güncelle (Mevcut mantık)
+                if (selectedSlot) {
+                    selectedSlot.classList.remove('selected', 'bg-primary', 'text-white');
+                    selectedSlot.classList.add('bg-gray-200', 'text-gray-800');
+                }
+                
+                selectedSlot = button;
+                selectedSlot.classList.add('selected');
+                selectedSlot.classList.remove('bg-gray-200', 'text-gray-800');
+
+                selectedTimeInput.value = time;
+                nextStep1Button.disabled = false;
+            });
+        }
 
         slotListDiv.appendChild(button);
     });
@@ -146,7 +158,7 @@ async function fetchAvailableSlots() {
         const data = await response.json();
 
         if (response.ok) {
-            renderSlots(data.slots);
+            renderSlots(data.all_slots, data.booked_slots);
         } else {
             slotListDiv.textContent = data.message || 'Saatler yüklenirken bir sorun oluştu.';
         }

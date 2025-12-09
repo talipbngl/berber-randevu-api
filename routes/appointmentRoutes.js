@@ -14,30 +14,30 @@ const getServiceDurationMinutes = (serviceType) => {
 
 
 // GET /api/slots: Boş randevu saatlerini döndürür
+// routes/appointmentRoutes.js -> router.get('/slots', ...) rotası içinde
+
+// ... (dosyanın başlangıcı, require'lar ve getServiceDurationMinutes aynı kalır) ...
+
+// GET /api/slots: Boş randevu saatlerini döndürür (Şimdi dolu slotları da işaretler)
 router.get('/slots', async (req, res) => {
     const { date } = req.query; 
     
-    if (!date) {
-        return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
-    }
+    // ... (date kontrolü ve dayOfWeek hesaplaması aynı kalır) ...
 
     try {
         const queryDate = new Date(date);
-        const dayOfWeek = (queryDate.getDay() === 0) ? 7 : queryDate.getDay(); // 1=Pazartesi, 7=Pazar
+        const dayOfWeek = (queryDate.getDay() === 0) ? 7 : queryDate.getDay(); 
 
         // 1. Çalışma programını çekme
-        const scheduleResult = await Schedule.findOne({ 
-            day_of_week: dayOfWeek, 
-            barber_id: 1 
-        });
+        const scheduleResult = await Schedule.findOne({ day_of_week: dayOfWeek, barber_id: 1 });
 
         if (!scheduleResult) {
             return res.send({ date: date, slots: [], message: 'Bu günde dükkan kapalıdır.' });
         }
 
         const { start_shift, end_shift } = scheduleResult;
-        const availableSlots = [];
-        const appointmentDuration = 30; // Temel slot süresi 30 dakika
+        const allPossibleSlots = []; // TÜM olası slotlar
+        const appointmentDuration = 30; 
         
         let currentTime = new Date(`${date} ${start_shift}`);
         const endTime = new Date(`${date} ${end_shift}`);
@@ -46,14 +46,13 @@ router.get('/slots', async (req, res) => {
         while (currentTime < endTime) {
             const slotStartTime = String(currentTime.getHours()).padStart(2, '0') + ':' + String(currentTime.getMinutes()).padStart(2, '0');
             
-            // Eğer bir sonraki slot (30 dk sonra) bitiş saatini aşacaksa, döngüyü kır
             if (new Date(currentTime.getTime() + appointmentDuration * 60000) > endTime) break;
 
-            availableSlots.push(slotStartTime);
-            currentTime = new Date(currentTime.getTime() + appointmentDuration * 60000); // 30 dakika ekle
+            allPossibleSlots.push(slotStartTime); // Tüm slotları ekle
+            currentTime = new Date(currentTime.getTime() + appointmentDuration * 60000); 
         }
 
-        // 3. Mevcut alınmış randevuları çekme
+        // 3. Mevcut alınmış randevuları ve Kapattığı Tüm Slotları Belirleme
         const startOfDay = new Date(queryDate.setHours(0, 0, 0, 0));
         const endOfDay = new Date(queryDate.setHours(23, 59, 59, 999));
 
@@ -61,17 +60,34 @@ router.get('/slots', async (req, res) => {
             start_time: { $gte: startOfDay, $lte: endOfDay }
         });
         
-        // Randevu başlangıç saatlerini HH:MM formatına çevirme
-        const bookedTimes = bookedAppointments.map(app => 
-            String(app.start_time.getHours()).padStart(2, '0') + ':' + String(app.start_time.getMinutes()).padStart(2, '0')
-        );
+        const blockedSlotsSet = new Set();
+        const slotDuration = 30;
 
-        // 4. Boş olanları filtreleme
-        const finalSlots = availableSlots.filter(slot => !bookedTimes.includes(slot));
+        bookedAppointments.forEach(app => {
+            let currentBlockTime = app.start_time.getTime();
+            const endTime = app.end_time.getTime();
+            
+            // Başlangıç slotunu bloke et
+            const startSlotTime = String(app.start_time.getHours()).padStart(2, '0') + ':' + String(app.start_time.getMinutes()).padStart(2, '0');
+            blockedSlotsSet.add(startSlotTime);
+            
+            // Eğer hizmet 30 dakikadan uzunsa, sonraki slotları da bloke et (Şu an 30 dk olsa da mantığı koruyoruz)
+            while (currentBlockTime < endTime - 1) { 
+                currentBlockTime += slotDuration * 60000;
 
+                if (currentBlockTime < endTime) {
+                    const blockedSlotTime = new Date(currentBlockTime);
+                    const slotTimeStr = String(blockedSlotTime.getHours()).padStart(2, '0') + ':' + String(blockedSlotTime.getMinutes()).padStart(2, '0');
+                    blockedSlotsSet.add(slotTimeStr);
+                }
+            }
+        });
+
+        // YENİ SONUÇ: Tüm slotları ve dolu olanların listesini döndür
         res.send({ 
             date: date, 
-            slots: finalSlots 
+            all_slots: allPossibleSlots, // Tüm olası slotlar
+            booked_slots: Array.from(blockedSlotsSet) // Dolu olan slotlar
         });
 
     } catch (error) {
@@ -79,6 +95,7 @@ router.get('/slots', async (req, res) => {
         res.status(500).send({ message: 'Sunucu hatası oluştu.' });
     }
 });
+// ... (POST /book rotası ve dosyanın geri kalanı aynı kalır) ...
 
 
 // POST /api/book: Yeni randevu kaydeder

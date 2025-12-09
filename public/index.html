@@ -8,6 +8,7 @@
     <style>
     /* Genel Font ve Renkler (Çukurova/KYK temasına uyum) */
     body { 
+    
         font-family: 'Inter', sans-serif; 
         /* YENİ ARKA PLAN LOGO KODU BURADA */
         background-image: url('https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg'); 
@@ -15,6 +16,15 @@
         background-position: center center;
         background-size: 1200px; /* Logo boyutunu ayarlayın (örneğin 500px) */
         
+    }
+    .slot-button.disabled {
+        opacity: 0.6;
+        text-decoration: line-through; /* Üstü Çizili */
+        cursor: not-allowed;
+        background-color: #fca5a5 !important; /* Açık Kırmızı Arka Plan */
+        color: #7f1d1d !important;      /* Koyu Kırmızı Metin */
+        transform: none;
+        box-shadow: none;
     }
     
     /* Logo çok baskın çıkarsa, formu saran div'e yarı şeffaflık ekleyebiliriz: */
@@ -40,6 +50,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+    <a href="admin.html" target="_blank" class="fixed bottom-4 right-4 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-800 transition duration-300 z-50">
+    <i class="fas fa-user-lock text-xl"></i>
+</a>
 
     <div class="fixed inset-0 bg-primary opacity-5 z-0"></div>
     <div class="fixed top-0 left-0 w-full h-1/2 bg-blue-100/50 blur-3xl z-0"></div>
