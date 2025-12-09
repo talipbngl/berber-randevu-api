@@ -42,7 +42,10 @@ app.use('/api/admin', adminRoutes);
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html')); 
 });
-
+app.get('/admin.html', (req, res) => {
+    // admin.html'in ana dizinde olduğunu varsayıyoruz
+    res.sendFile(path.join(__dirname, 'admin.html')); 
+});
 // Sunucuyu Başlatma
 app.listen(PORT, () => {
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor...`);
