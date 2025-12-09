@@ -1,4 +1,4 @@
-// server.js (MIME Type ve ENOENT Hatalarını Gideren Nihai Yapı)
+// server.js (public Klasörüne Uyumlu Nihai Sürüm)
 
 require('dotenv').config(); // Yerel ortam değişkenlerini yükler
 
@@ -30,25 +30,25 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // --- Statik Dosyalar (Frontend) ---
-// KRİTİK DÜZELTME: Tüm frontend dosyaları (HTML, JS, CSS) için proje kökünü kullan.
-// Bu, Render'ın dosyaları doğru MIME type ile sunmasını sağlar ve ENOENT hatalarını engeller.
-app.use(express.static(__dirname)); 
+// KRİTİK DÜZELTME: Tüm Frontend dosyalarını 'public' klasöründe arayacağız.
+app.use(express.static(path.join(__dirname, 'public'))); 
 
 // --- API Yönlendirmesi ---
 app.use('/api', appointmentRoutes); 
 app.use('/api/admin', adminRoutes);
 
 // Ana sayfayı (index.html) sunma
+// KRİTİK DÜZELTME: Kök istek (/) geldiğinde, public klasörü içindeki index.html dosyasını sunar.
 app.get('/', (req, res) => {
-    // KRİTİK DÜZELTME: index.html dosyasının kök dizinde olduğunu kesin olarak belirtiyoruz.
-    res.sendFile(path.join(__dirname, 'index.html')); 
+    res.sendFile(path.join(__dirname, 'public', 'index.html')); 
 });
 
 // Admin panelini sunma (admin.html)
+// Bu rota statik middleware tarafından halledilebilir, ancak kesinlik için açıkça tanımlıyoruz.
 app.get('/admin.html', (req, res) => {
-    // admin.html dosyasının kök dizinde olduğunu kesin olarak belirtiyoruz.
-    res.sendFile(path.join(__dirname, 'admin.html')); 
+    res.sendFile(path.join(__dirname, 'public', 'admin.html')); 
 });
+
 
 // Sunucuyu Başlatma
 app.listen(PORT, () => {
