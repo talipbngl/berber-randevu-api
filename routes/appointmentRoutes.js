@@ -154,5 +154,47 @@ router.post('/book', async (req, res) => {
         res.status(500).send({ message: 'Sunucu hatası oluştu, randevu kaydedilemedi.' });
     }
 });
+// routes/appointmentRoutes.js (Randevu İptal Rotası Eklendi)
+
+// DELETE /api/cancel: Telefon numarası ve randevu saati ile randevuyu siler
+router.delete('/cancel', async (req, res) => {
+    const { phone_number, date, time } = req.body;
+
+    if (!phone_number || !date || !time) {
+        return res.status(400).send({ message: 'Lütfen telefon numarası, tarih ve saat bilgilerini eksiksiz doldurun.' });
+    }
+    
+    // Tarih ve saat bilgisini Date objesine dönüştür
+    const [hour, minute] = time.split(':').map(Number);
+    const startDateTime = new Date(date);
+    startDateTime.setHours(hour, minute, 0, 0); 
+
+    try {
+        // 1. Kullanıcıyı Telefon Numarası ile bul
+        const user = await User.findOne({ phone_number: phone_number });
+        
+        if (!user) {
+            return res.status(404).send({ message: 'Bu telefon numarasına ait kullanıcı bulunamadı.' });
+        }
+
+        // 2. Kullanıcının ID'si ve Randevu Saati ile randevuyu bul ve sil
+        const result = await Appointment.deleteOne({
+            user_id: user._id,
+            start_time: startDateTime
+        });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).send({ message: 'Bu kullanıcıya ait bu saatte kayıtlı randevu bulunamadı.' });
+        }
+
+        res.status(200).send({ message: 'Randevunuz başarıyla iptal edilmiştir.' });
+
+    } catch (error) {
+        console.error('Randevu iptali sırasında hata:', error);
+        res.status(500).send({ message: 'Sunucu hatası oluştu, randevu iptal edilemedi.' });
+    }
+});
+
+module.exports = router;
 
 module.exports = router;
