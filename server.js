@@ -1,13 +1,13 @@
-// server.js (Modüler Yapı)
+// server.js (MIME Type ve Dosya Yolu Sorunlarını Gideren Nihai Yapı)
 
 require('dotenv').config(); // Yerel ortam değişkenlerini yükler
 
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-const path = require('path'); // Frontend dosyaları için
-const appointmentRoutes = require('./routes/appointmentRoutes'); // Yönlendirmeleri içeri aktarma
-const adminRoutes = require('./routes/adminRoutes');
+const path = require('path');
+const appointmentRoutes = require('./routes/appointmentRoutes'); // Randevu Rotaları
+const adminRoutes = require('./routes/adminRoutes');           // Yönetici Rotaları
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +23,6 @@ mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ MongoDB bağlantısı başarılı!'))
   .catch(err => {
     console.error('❌ MongoDB bağlantı hatası:', err.message);
-    // Hata durumunda uygulama bazen yine de çalışmaya devam edebilir
   });
 
 // --- Middleware'ler ---
@@ -31,21 +30,23 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // --- Statik Dosyalar (Frontend) ---
-app.use(express.static('public')); 
+// KRİTİK DÜZELTME: Tüm frontend dosyaları (HTML, JS, CSS) için proje kökünü kullan.
+// Bu, sunucunun dosyaları doğru MIME type ile sunmasını sağlar ve 404 hatalarını engeller.
+app.use(express.static(__dirname)); 
 
 // --- API Yönlendirmesi ---
-app.use('/api', appointmentRoutes); // Tüm /api istekleri appointmentRoutes'a yönlendirilir
-app.use('/api/admin', adminRoutes); // YENİ: Admin rotasını ekle
+app.use('/api', appointmentRoutes); 
 app.use('/api/admin', adminRoutes);
 
 // Ana sayfayı (index.html) sunma
+// Statik middleware zaten bunu hallettiği için, sadece kök isteğini index.html'e yönlendiriyoruz
 app.get('/', (req, res) => {
+    // index.html dosyasının kök dizinde olduğunu varsayıyoruz
     res.sendFile(path.join(__dirname, 'index.html')); 
 });
-app.get('/admin.html', (req, res) => {
-    // admin.html'in ana dizinde olduğunu varsayıyoruz
-    res.sendFile(path.join(__dirname, 'admin.html')); 
-});
+
+// Artık /admin.html rotasına açıkça ihtiyacımız yok, çünkü app.use(express.static(__dirname)) bu dosyayı doğrudan sunar.
+
 // Sunucuyu Başlatma
 app.listen(PORT, () => {
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor...`);
