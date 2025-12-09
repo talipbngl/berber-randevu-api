@@ -1,4 +1,4 @@
-// server.js (MIME Type ve Dosya Yolu Sorunlarını Gideren Nihai Yapı)
+// server.js (MIME Type ve ENOENT Hatalarını Gideren Nihai Yapı)
 
 require('dotenv').config(); // Yerel ortam değişkenlerini yükler
 
@@ -31,7 +31,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // --- Statik Dosyalar (Frontend) ---
 // KRİTİK DÜZELTME: Tüm frontend dosyaları (HTML, JS, CSS) için proje kökünü kullan.
-// Bu, sunucunun dosyaları doğru MIME type ile sunmasını sağlar ve 404 hatalarını engeller.
+// Bu, Render'ın dosyaları doğru MIME type ile sunmasını sağlar ve ENOENT hatalarını engeller.
 app.use(express.static(__dirname)); 
 
 // --- API Yönlendirmesi ---
@@ -39,13 +39,16 @@ app.use('/api', appointmentRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Ana sayfayı (index.html) sunma
-// Statik middleware zaten bunu hallettiği için, sadece kök isteğini index.html'e yönlendiriyoruz
 app.get('/', (req, res) => {
-    // index.html dosyasının kök dizinde olduğunu varsayıyoruz
+    // KRİTİK DÜZELTME: index.html dosyasının kök dizinde olduğunu kesin olarak belirtiyoruz.
     res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
-// Artık /admin.html rotasına açıkça ihtiyacımız yok, çünkü app.use(express.static(__dirname)) bu dosyayı doğrudan sunar.
+// Admin panelini sunma (admin.html)
+app.get('/admin.html', (req, res) => {
+    // admin.html dosyasının kök dizinde olduğunu kesin olarak belirtiyoruz.
+    res.sendFile(path.join(__dirname, 'admin.html')); 
+});
 
 // Sunucuyu Başlatma
 app.listen(PORT, () => {
