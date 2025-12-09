@@ -3,85 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIP Randevu | Barber Shop</title>
+    <title>Çukurova KYK Randevu Sistemi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Genel Sınıflar */
-        body { font-family: 'Arial', sans-serif; }
+        /* Genel Font ve Renkler (Çukurova/KYK temasına uyum) */
+        body { font-family: 'Inter', sans-serif; }
+        .bg-primary { background-color: #004d99; /* Derin Mavi */ }
+        .text-primary { color: #004d99; }
+        .slot-button { transition: all 0.2s; }
         .slot-button.selected { 
-            /* Seçili butona ekstra bir derinlik ve parlaklık ver */
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 77, 153, 0.4); /* Mavi Gölge */
             transform: scale(1.05);
+            background-color: #004d99 !important;
+            color: white !important;
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-gray-900 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-xl transform hover:shadow-3xl transition duration-500">
-        <h1 class="text-4xl font-extrabold text-gray-900 text-center mb-2">Çukurova KYK Berber Randevu Sitesi </h1>
-        <p class="text-center text-gray-500 mb-8">Saçınız ve stiliniz için yerinizi ayırtın.</p>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+
+    <div class="fixed inset-0 bg-primary opacity-5 z-0"></div>
+    <div class="fixed top-0 left-0 w-full h-1/2 bg-blue-100/50 blur-3xl z-0"></div>
+    <div class="fixed bottom-0 right-0 w-1/2 h-1/2 bg-indigo-100/50 blur-3xl z-0"></div>
+
+    <div class="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-4xl z-10">
+        
+        <header class="text-center mb-10 border-b pb-5">
+            <div class="flex items-center justify-center space-x-3 mb-2">
+                <i class="fas fa-graduation-cap text-4xl text-primary"></i> 
+                <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900">Çukurova KYK Randevu Merkezi</h1>
+            </div>
+            <p class="text-md text-gray-600">Öğrenci Dostu Tıraş Deneyimi</p>
+        </header>
+
+        <div id="step-indicator" class="flex justify-between items-center mb-10 px-4">
+            <div class="flex flex-col items-center relative">
+                <div id="step-1-circle" class="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-white font-bold transition-all duration-300 shadow-md">
+                    1
+                </div>
+                <span class="text-sm mt-2 text-primary font-semibold">Tarih Seçimi</span>
+            </div>
+            
+            <div class="flex-auto border-t-2 border-dashed border-gray-300 mx-4"></div>
+            
+            <div class="flex flex-col items-center relative">
+                <div id="step-2-circle" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 text-gray-600 font-bold transition-all duration-300">
+                    2
+                </div>
+                <span class="text-sm mt-2 text-gray-600">Bilgileri Gir</span>
+            </div>
+
+            <div class="flex-auto border-t-2 border-dashed border-gray-300 mx-4"></div>
+
+            <div class="flex flex-col items-center relative">
+                <div id="step-3-circle" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-300 text-gray-600 font-bold transition-all duration-300">
+                    3
+                </div>
+                <span class="text-sm mt-2 text-gray-600">Onay</span>
+            </div>
+        </div>
 
         <form id="appointment-form" class="space-y-8">
             
-            <div class="flex items-center space-x-2 text-blue-600">
+            <div id="step-1-content" class="step-content space-y-6">
                 
-                <div class="flex-grow border-t border-blue-200"></div>
-                <span class="text-sm font-semibold">Tarih & Saat</span>
-            </div>
-            
-            <section class="space-y-3">
-                <label for="date" class="block text-xl font-bold text-gray-800">Randevu Tarihi:</label>
-                <input type="date" id="date" required 
-                       class="w-full px-5 py-3 border border-gray-300 rounded-xl bg-gray-50 text-gray-700 
-                              focus:ring-blue-500 focus:border-blue-500 shadow-inner transition duration-150">
-            </section>
+                <section>
+                    <label for="date" class="block text-lg font-semibold text-gray-800 mb-2">📅 Randevu Tarihi Seçin:</label>
+                    <input type="date" id="date" required 
+                           class="w-full px-5 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 
+                                  focus:ring-primary focus:border-primary shadow-sm transition duration-150">
+                </section>
 
-            <section class="space-y-3">
-                <label class="block text-xl font-bold text-gray-800">Boş Slotlar:</label>
-                <div id="slot-list" class="flex flex-wrap gap-3 p-4 bg-gray-100 rounded-xl min-h-[50px] text-base text-gray-500 items-center justify-center border border-gray-200">
-                    Lütfen bir tarih seçin.
-                </div>
-                <input type="hidden" id="selected-time" required>
-            </section>
-            
-            <div class="flex items-center space-x-2 text-blue-600 pt-4">
-                <div class="flex-grow border-t border-blue-200"></div>
-                <span class="text-sm font-semibold">Bilgiler & Onay</span>
+                <section>
+                    <label class="block text-lg font-semibold text-gray-800 mb-3">🕒 Boş Saatler (30 dk):</label>
+                    <div id="slot-list" class="flex flex-wrap gap-3 p-4 bg-gray-100 rounded-lg min-h-[50px] text-base text-gray-600 items-center justify-center border border-gray-300 shadow-inner">
+                        Lütfen bir tarih seçin.
+                    </div>
+                    <input type="hidden" id="selected-time" required>
+                </section>
+                
+                <button type="button" id="next-step-1" disabled 
+                        class="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition duration-300 shadow-md">
+                    Bilgileri Girme Adımına Geç
+                </button>
             </div>
 
-            <section class="space-y-4">
+            <div id="step-2-content" class="step-content space-y-6 hidden">
+                
+                <p class="text-sm text-gray-500 mb-6 border-b pb-3">Lütfen randevu onayı için bilgilerinizi eksiksiz doldurunuz.</p>
                 
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Adınız Soyadınız:</label>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">👤 Adınız Soyadınız:</label>
                     <input type="text" id="name" required placeholder="Örn: Hamdo Dahir Saban"
-                           class="w-full px-5 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary focus:border-primary shadow-sm">
                 </div>
 
                 <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefon Numaranız (5XX...):</label>
-                    <input type="tel" id="phone" required placeholder="5xx 123 45 67"
-                           class="w-full px-5 py-3 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">📱 Telefon Numaranız (5XX...):</label>
+                    <input type="tel" id="phone" required placeholder="5XX XXX XX XX formatında 10 hane"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-primary focus:border-primary shadow-sm">
+                    <p class="text-xs text-gray-500 mt-1">Sadece Türkiye mobil numaralarına (+90) izin verilir.</p>
                 </div>
 
                 <div>
-                    <label for="service" class="block text-sm font-medium text-gray-700 mb-1">Hizmet Türü:</label>
+                    <label for="service" class="block text-sm font-medium text-gray-700 mb-1">✂️ Hizmet Türü:</label>
                     <select id="service" required
-                            class="w-full px-5 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 focus:ring-blue-500 focus:border-blue-500 shadow-sm appearance-none">
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-primary focus:border-primary shadow-sm appearance-none">
                         <option value="">Hizmet Seçiniz</option>
                         <option value="Sac Kesimi">Saç Kesimi (30 dk)</option>
                         <option value="Sakal Tras">Sakal Tıraşı (30 dk)</option>
-                        <option value="Sac Sakal">Saç & Sakal (30 dk)</option>
+                        <option value="Sac Sakal">Saç & Sakal (60 dk)</option>
                     </select>
                 </div>
-            </section>
-            
-            <div id="message" class="hidden p-4 rounded-xl text-center font-extrabold transition duration-300 shadow-inner"></div>
+                
+                <div class="flex justify-between space-x-4 pt-4">
+                    <button type="button" id="prev-step-2" 
+                            class="w-1/2 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition duration-150">
+                        <i class="fas fa-arrow-left mr-2"></i> Geri
+                    </button>
+                    <button type="button" id="next-step-2" 
+                            class="w-1/2 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition duration-300 shadow-md">
+                        Randevuyu Onayla <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
 
-            <button type="submit" id="submit-button" disabled
-                    class="w-full py-4 bg-blue-600 text-white font-extrabold text-lg rounded-xl 
-                           hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed 
-                           transition duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                Randevuyu Hemen Onayla
-            </button>
+            <div id="step-3-content" class="step-content space-y-6 hidden">
+                
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 text-center">Randevu Özeti</h3>
+                
+                <div class="p-6 bg-blue-50 border-l-4 border-primary rounded-lg space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Tarih:</span>
+                        <span id="summary-date" class="font-bold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Saat:</span>
+                        <span id="summary-time" class="font-bold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Hizmet:</span>
+                        <span id="summary-service" class="font-bold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between border-t pt-2 mt-2">
+                        <span class="text-gray-600">Ad Soyad:</span>
+                        <span id="summary-name" class="font-bold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Telefon:</span>
+                        <span id="summary-phone" class="font-bold text-gray-800"></span>
+                    </div>
+                </div>
+
+                <div id="message" class="hidden p-4 rounded-xl text-center font-extrabold transition duration-300 shadow-inner"></div>
+
+                <div class="flex justify-between space-x-4 pt-4">
+                    <button type="button" id="prev-step-3" 
+                            class="w-1/2 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition duration-150">
+                        <i class="fas fa-arrow-left mr-2"></i> Geri
+                    </button>
+                    <button type="submit" id="submit-button" disabled
+                            class="w-1/2 py-4 bg-primary text-white font-extrabold text-lg rounded-xl 
+                                   hover:bg-blue-800 disabled:bg-gray-500 transition duration-300 shadow-lg transform hover:-translate-y-0.5">
+                        Randevuyu Hemen Onayla
+                    </button>
+                </div>
+            </div>
         </form>
     </div>
 
