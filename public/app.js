@@ -215,7 +215,7 @@ async function handleFormSubmit(event) {
                 <div class="text-center p-8 bg-green-50 rounded-lg shadow-xl">
                     <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
                     <h3 class="text-3xl font-extrabold text-gray-800 mb-2">Randevu Başarılı!</h3>
-                    <p class="text-lg text-gray-600">Lütfen Zamanında Dükkanda olun!.</p>
+                    <p class="text-lg text-gray-600">Randevu Saatinden 5-10dk önce geliniz!</p>
                     <p class="mt-4 text-primary font-bold">Saat: ${appointmentData.time} | Tarih: ${appointmentData.date}</p>
                 </div>`;
             updateStep(3); // Adım 3'ü yeşil yapmak için
