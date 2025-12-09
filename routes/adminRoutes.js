@@ -9,9 +9,10 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 // --- Middleware: Admin Yetkilendirme Kontrolü ---
 const adminAuth = (req, res, next) => {
     // ADMIN_PASSWORD'un ortam değişkenlerinden doğru yüklendiğinden emin olun
-    if (!ADMIN_PASSWORD) {
-        console.error("HATA: ADMIN_PASSWORD ortamda tanımlı değil!");
-        return res.status(500).send({ message: 'Sunucu yapılandırma hatası.' });
+   if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length === 0) {
+        console.error("HATA AYIKLAMA: ADMIN_PASSWORD ortamda tanımlı DEĞİL. Render'da ayarlı olduğundan emin olun.");
+        // Kullanıcıya gizli parolayı göstermeden genel bir hata dönelim
+        return res.status(500).send({ message: 'Sunucu yapılandırma hatası: Parola bulunamadı.' });
     }
     
     // Parolayı sorgu parametresi (query parameter) ile alalım: /api/admin?pass=...
