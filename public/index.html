@@ -3,60 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Çukurova KYK Berber Randevu Sistemi</title>
+    <title>Çukurova KYK Randevu Sistemi</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-    /* Genel Font ve Renkler (Çukurova/KYK temasına uyum) */
-    body { 
-    
-        font-family: 'Inter', sans-serif; 
-        /* YENİ ARKA PLAN LOGO KODU BURADA */
-        background-image: url('https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg'); 
-        background-repeat: no-repeat;
-        background-position: center center;
-        background-size: 1200px; /* Logo boyutunu ayarlayın (örneğin 500px) */
+        /* Genel Font ve Renkler (Çukurova/KYK temasına uyum) */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            /* Arka Plan Logo (Kullanıcının belirlediği URL) */
+            background-image: url('https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg'); 
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: 1200px;
+        }
+        .bg-primary { background-color: #004d99; /* Derin Mavi */ }
+        .text-primary { color: #004d99; }
+        .slot-button { transition: all 0.2s; }
         
-    }
-    .slot-button.disabled {
-        opacity: 0.6;
-        text-decoration: line-through; /* Üstü Çizili */
-        cursor: not-allowed;
-        background-color: #fca5a5 !important; /* Açık Kırmızı Arka Plan */
-        color: #7f1d1d !important;      /* Koyu Kırmızı Metin */
-        transform: none;
-        box-shadow: none;
-    }
-    
-    /* Logo çok baskın çıkarsa, formu saran div'e yarı şeffaflık ekleyebiliriz: */
-    /* Z-Index ayarı, formun logonun üstünde kalmasını sağlar */
-    .z-10 { z-index: 10; } 
+        /* Seçili slot stili */
+        .slot-button.selected { 
+            box-shadow: 0 4px 15px rgba(0, 77, 153, 0.4); 
+            transform: scale(1.05);
+            background-color: #004d99 !important;
+            color: white !important;
+        }
+        
+        /* Yeni Stil: Dolu Slotlar İçin */
+        .slot-button.disabled {
+            opacity: 0.6;
+            text-decoration: line-through; /* Üstü Çizili */
+            cursor: not-allowed;
+            background-color: #fca5a5 !important; /* Açık Kırmızı Arka Plan */
+            color: #7f1d1d !important;      /* Koyu Kırmızı Metin */
+            transform: none;
+            box-shadow: none;
+        }
 
-    /* Logo arkasında formu daha net göstermek için */
-    .shadow-2xl {
-        /* Formun arka planına hafif bir şeffaflık eklemek isterseniz bu kodu kullanın */
-         background-color: rgba(255, 255, 255, 0.95); 
-    }
-
-    .bg-primary { background-color: #004d99; }
-    .text-primary { color: #004d99; }
-    .slot-button { transition: all 0.2s; }
-    .slot-button.selected { 
-        box-shadow: 0 4px 15px rgba(0, 77, 153, 0.4); 
-        transform: scale(1.05);
-        background-color: #004d99 !important;
-        color: white !important;
-    }
-</style>
+        /* Formun arka planına hafif bir şeffaflık (Formun Logodan daha belirgin olması için) */
+        .shadow-2xl {
+            background-color: rgba(255, 255, 255, 0.95); 
+        }
+    </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
-    <a href="admin.html" target="_blank" class="fixed bottom-4 right-4 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-800 transition duration-300 z-50">
-    <i class="fas fa-user-lock text-xl"></i>
-</a>
-<a href="cancel.html" class="fixed bottom-4 right-20 bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition duration-300 z-50">
-    <i class="fas fa-times-circle text-xl"></i>
-</a>
 
+    <a href="admin.html" target="_blank" class="fixed bottom-4 right-4 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-800 transition duration-300 z-50">
+        <i class="fas fa-user-lock text-xl"></i>
+    </a>
+    
     <div class="fixed inset-0 bg-primary opacity-5 z-0"></div>
     <div class="fixed top-0 left-0 w-full h-1/2 bg-blue-100/50 blur-3xl z-0"></div>
     <div class="fixed bottom-0 right-0 w-1/2 h-1/2 bg-indigo-100/50 blur-3xl z-0"></div>
@@ -120,6 +114,11 @@
                 <button type="button" id="next-step-1" disabled 
                         class="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition duration-300 shadow-md">
                     Bilgileri Girme Adımına Geç
+                </button>
+
+                <button type="button" id="open-cancellation-btn"
+                        class="w-full mt-3 py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition duration-300 shadow-md">
+                    Randevumu İptal Et
                 </button>
             </div>
 
@@ -207,6 +206,30 @@
         </form>
     </div>
 
+    <div id="cancellation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold text-red-600 mb-4 flex items-center space-x-2">
+                <i class="fas fa-calendar-times"></i>
+                <span>Randevu İptali</span>
+            </h2>
+            <p class="text-sm text-gray-500 mb-4">Lütfen telefon numaranızı girerek aktif randevularınızı listeleyin.</p>
+            
+            <form id="cancellation-form" class="space-y-4">
+                <input type="tel" id="cancel-phone-input" required placeholder="5XX XXX XX XX formatında 10 hane"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 shadow-sm">
+                <button type="submit" id="list-appointments-btn" class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-150">
+                    Randevuları Listele
+                </button>
+            </form>
+
+            <div id="cancellation-results" class="mt-4 space-y-3">
+                </div>
+
+            <button type="button" id="close-cancellation-btn" class="mt-6 w-full py-2 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-100 transition duration-150">
+                Kapat
+            </button>
+        </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>

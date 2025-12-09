@@ -1,13 +1,13 @@
-// app.js - Frontend Logiği (Adım Adım Yapıya Uyumlu Nihai Sürüm)
+// app.js - Frontend Logiği (Nihai Sürüm - İptal Modal Dahil)
 
 // --- Elementler ---
 const form = document.getElementById('appointment-form');
 const dateInput = document.getElementById('date');
 const slotListDiv = document.getElementById('slot-list');
 const selectedTimeInput = document.getElementById('selected-time');
-const phoneInput = document.getElementById('phone');
-const messageDiv = document.getElementById('message');
 const submitButton = document.getElementById('submit-button');
+const messageDiv = document.getElementById('message');
+const phoneInput = document.getElementById('phone');
 
 // Adım Geçiş Butonları
 const nextStep1Button = document.getElementById('next-step-1');
@@ -15,19 +15,56 @@ const nextStep2Button = document.getElementById('next-step-2');
 const prevStep2Button = document.getElementById('prev-step-2');
 const prevStep3Button = document.getElementById('prev-step-3');
 
+// Yeni İptal Elementleri
+const cancellationModal = document.getElementById('cancellation-modal');
+const openCancellationBtn = document.getElementById('open-cancellation-btn');
+const closeCancellationBtn = document.getElementById('close-cancellation-btn');
+const cancellationForm = document.getElementById('cancellation-form');
+const cancelPhoneInput = document.getElementById('cancel-phone-input');
+const cancellationResults = document.getElementById('cancellation-results');
+const listAppointmentsBtn = document.getElementById('list-appointments-btn');
+
+
 const API_BASE_URL = window.location.origin;
+
 let selectedSlot = null;
 let currentStep = 1;
 
+// --- Yardımcı Fonksiyonlar ---
+
+function displayMessage(text, type) {
+    messageDiv.textContent = text;
+    messageDiv.className = `p-4 rounded-xl text-center font-extrabold transition duration-300 ${type === 'success' ? 'bg-green-100 text-green-700 shadow-lg' : 'bg-red-100 text-red-700 shadow-lg'}`;
+    messageDiv.classList.remove('hidden');
+}
+
+// Telefon numarası formatlama
+const formatPhoneNumber = (value) => {
+    let cleaned = ('' + value).replace(/\D/g, '');
+
+    if (cleaned.startsWith('90')) { cleaned = cleaned.substring(2); } 
+    else if (cleaned.startsWith('0')) { cleaned = cleaned.substring(1); }
+    
+    cleaned = cleaned.substring(0, 10);
+
+    let formattedValue = '';
+    if (cleaned.length > 0) { formattedValue += cleaned.substring(0, 3); }
+    if (cleaned.length > 3) { formattedValue += ' ' + cleaned.substring(3, 6); }
+    if (cleaned.length > 6) { formattedValue += ' ' + cleaned.substring(6, 8); }
+    if (cleaned.length > 8) { formattedValue += ' ' + cleaned.substring(8, 10); }
+    
+    return formattedValue;
+};
+
+
 // --- Step Logic ---
+
 function updateStep(step) {
     currentStep = step;
     
-    // İçerik görünürlüğünü yönetme
     document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
     document.getElementById(`step-${step}-content`).classList.remove('hidden');
 
-    // Göstergeleri (Circles) yönetme
     document.querySelectorAll('[id^="step-"]').forEach(el => {
         el.classList.remove('bg-primary', 'text-white', 'bg-gray-300', 'text-gray-600');
         el.classList.add('bg-gray-300', 'text-gray-600');
@@ -39,8 +76,8 @@ function updateStep(step) {
         circle.classList.add('bg-primary', 'text-white');
     }
 
-    messageDiv.classList.add('hidden'); // Yeni adıma geçerken mesajı gizle
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Sayfanın başına kaydır
+    messageDiv.classList.add('hidden'); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
 }
 
 function validateStep2() {
@@ -71,15 +108,13 @@ function populateSummary() {
     document.getElementById('summary-phone').textContent = phone;
 }
 
-// --- API ve İşlem Fonksiyonları ---
 
-function displayMessage(text, type) {
-    // Tailwind sınıfları güncellendi
-    messageDiv.textContent = text;
-    messageDiv.className = `p-4 rounded-xl text-center font-extrabold transition duration-300 ${type === 'success' ? 'bg-green-100 text-green-700 shadow-lg' : 'bg-red-100 text-red-700 shadow-lg'}`;
-    messageDiv.classList.remove('hidden');
-}
+// --- API Fonksiyonları ---
 
+/**
+ * Slotları listeler ve tıklama olaylarını ayarlar.
+ * Şimdi tüm slotları gösterir ve dolu olanları üstü çizili yapar.
+ */
 function renderSlots(allSlots, bookedSlots) {
     slotListDiv.innerHTML = '';
     slotListDiv.classList.remove('justify-center'); 
@@ -90,13 +125,18 @@ function renderSlots(allSlots, bookedSlots) {
         return;
     }
 
+    // Seçili slotu sıfırla
+    selectedSlot = null;
+    selectedTimeInput.value = '';
+    nextStep1Button.disabled = true;
+
+
     allSlots.forEach(time => {
         const isBooked = bookedSlots.includes(time);
         const button = document.createElement('button');
         
         button.type = 'button';
         button.textContent = time;
-        // Tailwind sınıfları (Yeni HTML ile uyumlu)
         button.classList.add('slot-button', 'px-4', 'py-2', 'rounded-full', 'transition', 'duration-150', 'shadow-sm', 'text-base');
 
         if (isBooked) {
@@ -108,7 +148,7 @@ function renderSlots(allSlots, bookedSlots) {
             button.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-blue-200');
 
             button.addEventListener('click', () => {
-                // Seçili slotu güncelle (Mevcut mantık)
+                // Seçili slotu güncelle
                 if (selectedSlot) {
                     selectedSlot.classList.remove('selected', 'bg-primary', 'text-white');
                     selectedSlot.classList.add('bg-gray-200', 'text-gray-800');
@@ -125,15 +165,12 @@ function renderSlots(allSlots, bookedSlots) {
 
         slotListDiv.appendChild(button);
     });
-
-    nextStep1Button.disabled = !selectedSlot;
 }
 
 async function fetchAvailableSlots() {
-    // ... (Fetch logic aynı kaldı) ...
     const selectedDate = dateInput.value;
     selectedTimeInput.value = ''; 
-    nextStep1Button.disabled = true; // Buton adı submit değil, nextStep1 oldu
+    nextStep1Button.disabled = true; 
     selectedSlot = null;
     messageDiv.classList.add('hidden'); 
 
@@ -158,7 +195,7 @@ async function fetchAvailableSlots() {
         const data = await response.json();
 
         if (response.ok) {
-            renderSlots(data.all_slots, data.booked_slots);
+            renderSlots(data.all_slots, data.booked_slots); 
         } else {
             slotListDiv.textContent = data.message || 'Saatler yüklenirken bir sorun oluştu.';
         }
@@ -171,10 +208,8 @@ async function fetchAvailableSlots() {
 async function handleFormSubmit(event) {
     event.preventDefault();
 
-    // Bu fonksiyon sadece Adım 3'teki final onayı için çalışır
     if (currentStep !== 3) return;
 
-    // ... (Final Gönderme Logic'i aynı kaldı) ...
     if (!selectedTimeInput.value) {
         displayMessage('Lütfen boş bir saat seçiniz.', 'error');
         return;
@@ -182,14 +217,13 @@ async function handleFormSubmit(event) {
     
     const rawPhoneNumber = document.getElementById('phone').value.replace(/\s/g, '').replace('+', '').replace('90', '');
     
-    // Final doğrulama (Gerekirse tekrar kontrol)
     if (rawPhoneNumber.length !== 10 || !rawPhoneNumber.startsWith('5')) {
         displayMessage('Telefon numarası geçersiz. Lütfen Adım 2\'yi kontrol edin.', 'error');
         return;
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = 'Onaylanıyor...';
+    submitButton.textContent = 'Randevu Alınıyor...';
 
     const appointmentData = {
         name: document.getElementById('name').value,
@@ -210,15 +244,17 @@ async function handleFormSubmit(event) {
 
         if (response.ok) {
             displayMessage(`Randevunuz başarıyla oluşturuldu! Saat: ${appointmentData.time}`, 'success');
-            // Başarılı kayıtta form sıfırlanabilir veya teşekkür ekranına geçilebilir
+            
+            // Başarılı kayıtta Teşekkür Ekranı
             document.getElementById('step-3-content').innerHTML = `
                 <div class="text-center p-8 bg-green-50 rounded-lg shadow-xl">
                     <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
                     <h3 class="text-3xl font-extrabold text-gray-800 mb-2">Randevu Başarılı!</h3>
-                    <p class="text-lg text-gray-600">Randevu Saatinden 5-10dk önce geliniz!</p>
+                    <p class="text-lg text-gray-600">Randevunuz kaydedildi.</p>
                     <p class="mt-4 text-primary font-bold">Saat: ${appointmentData.time} | Tarih: ${appointmentData.date}</p>
+                    <button type="button" onclick="window.location.reload()" class="mt-6 py-2 px-4 bg-primary text-white rounded-lg hover:bg-blue-800">Yeni Randevu Al</button>
                 </div>`;
-            updateStep(3); // Adım 3'ü yeşil yapmak için
+            updateStep(3); 
         } else {
             displayMessage(data.message || 'Randevu alınırken beklenmedik bir hata oluştu.', 'error');
         }
@@ -227,71 +263,193 @@ async function handleFormSubmit(event) {
         displayMessage('Ağ hatası: Sunucuya ulaşılamadı.', 'error');
     } finally {
         submitButton.textContent = 'Randevuyu Hemen Onayla';
-        submitButton.disabled = false;
+        if (selectedTimeInput.value) {
+             submitButton.disabled = false; 
+        }
     }
 }
 
+
+// --- Randevu İptal Logiği ---
+
+/**
+ * Aktif randevuları listeler ve iptal butonlarını ekler.
+ */
+function renderCancellableAppointments(appointments) {
+    cancellationResults.innerHTML = '';
+    
+    if (appointments.length === 0) {
+        cancellationResults.innerHTML = '<p class="text-red-500 font-semibold">Bu numaraya kayıtlı aktif randevu bulunmamaktadır.</p>';
+        return;
+    }
+
+    appointments.forEach(app => {
+        const appointmentDate = new Date(app.time);
+        const dateStr = appointmentDate.toLocaleDateString('tr-TR', { year: 'numeric', month: 'short', day: 'numeric' });
+        const timeStr = appointmentDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        const itemDiv = document.createElement('div');
+        itemDiv.id = `app-${app.id}`;
+        itemDiv.className = 'flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg';
+        
+        itemDiv.innerHTML = `
+            <div>
+                <span class="font-bold">${dateStr} ${timeStr}</span> 
+                <span class="text-sm text-gray-600">(${app.service})</span>
+            </div>
+            <button type="button" data-id="${app.id}" class="cancel-action-btn py-1 px-3 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition duration-150">
+                İptal Et
+            </button>
+        `;
+        cancellationResults.appendChild(itemDiv);
+    });
+}
+
+/**
+ * Randevu ID'si ile iptal isteği gönderir.
+ */
+async function cancelAppointmentById(id, button) {
+    button.disabled = true;
+    button.textContent = 'İptal Ediliyor...';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/cancel-id/${id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById(`app-${id}`).innerHTML = `
+                <div class="text-green-600 font-bold">✅ İptal Edildi!</div>
+            `;
+            setTimeout(() => {
+                document.getElementById(`app-${id}`).remove();
+                // Slot listesini yenile
+                dateInput.dispatchEvent(new Event('change'));
+            }, 3000); 
+            
+        } else {
+            button.textContent = 'Hata!';
+            alert(data.message || 'İptal başarısız oldu.');
+        }
+
+    } catch (error) {
+        console.error('İptal Hatası:', error);
+        button.textContent = 'Ağ Hatası!';
+    } finally {
+        button.disabled = false;
+    }
+}
+
+
 // --- Olay Dinleyicileri ---
 
-// TELEFON NUMARASI FORMATLAMA
-const formatPhoneNumber = (value) => {
-    // ... (Formatlama mantığı aynı kaldı) ...
-    let cleaned = ('' + value).replace(/\D/g, '');
+document.addEventListener('DOMContentLoaded', () => {
 
-    if (cleaned.startsWith('90')) { cleaned = cleaned.substring(2); } 
-    else if (cleaned.startsWith('0')) { cleaned = cleaned.substring(1); }
+    // Telefon numarası formatlama (Randevu formu)
+    phoneInput.addEventListener('input', (e) => {
+        e.target.value = formatPhoneNumber(e.target.value);
+    });
+    // Telefon numarası formatlama (İptal formu)
+    cancelPhoneInput.addEventListener('input', (e) => {
+        e.target.value = formatPhoneNumber(e.target.value);
+    });
+
+
+    // Adım Geçişleri
+    nextStep1Button.addEventListener('click', () => {
+        if (!selectedTimeInput.value) {
+            displayMessage('Lütfen boş bir randevu saati seçiniz.', 'error');
+            return;
+        }
+        updateStep(2);
+    });
+
+    nextStep2Button.addEventListener('click', () => {
+        if (validateStep2()) {
+            populateSummary();
+            updateStep(3);
+            submitButton.disabled = false; 
+        }
+    });
+
+    prevStep2Button.addEventListener('click', () => {
+        updateStep(1);
+    });
+
+    prevStep3Button.addEventListener('click', () => {
+        updateStep(2);
+    });
+
+
+    // Randevu İptal Butonu
+    openCancellationBtn.addEventListener('click', () => {
+        cancellationModal.classList.remove('hidden');
+        cancellationResults.innerHTML = ''; // Önceki sonuçları temizle
+        cancellationForm.reset();
+    });
+
+    // Modal Kapatma Butonu
+    closeCancellationBtn.addEventListener('click', () => {
+        cancellationModal.classList.add('hidden');
+        cancellationForm.reset(); 
+    });
     
-    cleaned = cleaned.substring(0, 10);
+    // Randevuları Listeleme Formu (İptal Modal İçinde)
+    cancellationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        cancellationResults.innerHTML = '<p class="text-center text-gray-500">Randevular aranıyor...</p>';
+        listAppointmentsBtn.disabled = true;
 
-    let formattedValue = '';
-    if (cleaned.length > 0) { formattedValue += cleaned.substring(0, 3); }
-    if (cleaned.length > 3) { formattedValue += ' ' + cleaned.substring(3, 6); }
-    if (cleaned.length > 6) { formattedValue += ' ' + cleaned.substring(6, 8); }
-    if (cleaned.length > 8) { formattedValue += ' ' + cleaned.substring(8, 10); }
-    
-    return formattedValue;
-};
+        const rawPhoneNumber = cancelPhoneInput.value.replace(/\s/g, '').replace('+', '').replace('90', '');
+        
+        if (rawPhoneNumber.length !== 10) {
+            cancellationResults.innerHTML = '<p class="text-red-500 font-semibold">Lütfen 10 haneli geçerli bir numara girin.</p>';
+            listAppointmentsBtn.disabled = false;
+            return;
+        }
 
-// Kullanıcı girişi sırasında formatlama
-phoneInput.addEventListener('input', (e) => {
-    e.target.value = formatPhoneNumber(e.target.value);
-});
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/user-appointments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone_number: '+90' + rawPhoneNumber })
+            });
+            
+            const data = await response.json();
 
-// Adım Geçişleri
+            if (response.ok) {
+                renderCancellableAppointments(data.appointments);
+            } else {
+                cancellationResults.innerHTML = `<p class="text-red-500 font-semibold">${data.message || 'Randevu listelenirken bir hata oluştu.'}</p>`;
+            }
 
-// Adım 1 -> Adım 2
-nextStep1Button.addEventListener('click', () => {
-    updateStep(2);
-});
+        } catch (error) {
+            cancellationResults.innerHTML = '<p class="text-red-500 font-semibold">Sunucuya ulaşılamadı. Ağ hatası.</p>';
+        } finally {
+            listAppointmentsBtn.disabled = false;
+        }
+    });
 
-// Adım 2 -> Adım 3
-nextStep2Button.addEventListener('click', () => {
-    if (validateStep2()) {
-        populateSummary();
-        updateStep(3);
-        submitButton.disabled = false; // Final onaya gelince butonu aktif et
-    }
-});
+    // Randevu İptal İşlemi (Delegate Event Listener)
+    cancellationResults.addEventListener('click', (e) => {
+        const targetButton = e.target.closest('.cancel-action-btn');
+        if (targetButton) {
+            const appointmentId = targetButton.getAttribute('data-id');
+            if (confirm('Bu randevuyu iptal etmek istediğinizden emin misiniz?')) {
+                cancelAppointmentById(appointmentId, targetButton);
+            }
+        }
+    });
 
-// Adım 2 -> Adım 1 (Geri)
-prevStep2Button.addEventListener('click', () => {
-    updateStep(1);
-});
+    // Tarih değiştiğinde boş saatleri otomatik yükle
+    dateInput.addEventListener('change', fetchAvailableSlots);
 
-// Adım 3 -> Adım 2 (Geri)
-prevStep3Button.addEventListener('click', () => {
-    updateStep(2);
-});
+    // Form gönderildiğinde (Submit)
+    form.addEventListener('submit', handleFormSubmit);
 
-
-// Tarih değiştiğinde boş saatleri otomatik yükle
-dateInput.addEventListener('change', fetchAvailableSlots);
-
-// Form gönderildiğinde (Submit)
-form.addEventListener('submit', handleFormSubmit);
-
-// Sayfa yüklendiğinde
-window.addEventListener('load', () => {
+    // Sayfa yüklendiğinde bugünün tarihinden önceki tarihleri seçimi engelle
     const today = new Date().toISOString().split('T')[0];
     dateInput.setAttribute('min', today);
     updateStep(1); // Sayfa yüklendiğinde Adım 1'i göster

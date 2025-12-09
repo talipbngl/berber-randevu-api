@@ -1,3 +1,5 @@
+// routes/appointmentRoutes.js
+
 const express = require('express');
 const router = express.Router();
 
@@ -6,23 +8,19 @@ const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Schedule = require('../models/Schedule');
 
-// Yardımcı fonksiyon: Hizmet süresini dakika cinsinden döndürür
+// Yardımcı fonksiyon: Tüm hizmetler 30 dakika olarak sabitlendi.
 const getServiceDurationMinutes = (serviceType) => {
-   
     return 30; 
 }
 
 
-// GET /api/slots: Boş randevu saatlerini döndürür
-// routes/appointmentRoutes.js -> router.get('/slots', ...) rotası içinde
-
-// ... (dosyanın başlangıcı, require'lar ve getServiceDurationMinutes aynı kalır) ...
-
-// GET /api/slots: Boş randevu saatlerini döndürür (Şimdi dolu slotları da işaretler)
+// GET /api/slots: Boş randevu saatlerini döndürür (Dolu olanları işaretler)
 router.get('/slots', async (req, res) => {
     const { date } = req.query; 
     
-    // ... (date kontrolü ve dayOfWeek hesaplaması aynı kalır) ...
+    if (!date) {
+        return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
+    }
 
     try {
         const queryDate = new Date(date);
@@ -67,11 +65,9 @@ router.get('/slots', async (req, res) => {
             let currentBlockTime = app.start_time.getTime();
             const endTime = app.end_time.getTime();
             
-            // Başlangıç slotunu bloke et
             const startSlotTime = String(app.start_time.getHours()).padStart(2, '0') + ':' + String(app.start_time.getMinutes()).padStart(2, '0');
             blockedSlotsSet.add(startSlotTime);
             
-            // Eğer hizmet 30 dakikadan uzunsa, sonraki slotları da bloke et (Şu an 30 dk olsa da mantığı koruyoruz)
             while (currentBlockTime < endTime - 1) { 
                 currentBlockTime += slotDuration * 60000;
 
@@ -95,7 +91,6 @@ router.get('/slots', async (req, res) => {
         res.status(500).send({ message: 'Sunucu hatası oluştu.' });
     }
 });
-// ... (POST /book rotası ve dosyanın geri kalanı aynı kalır) ...
 
 
 // POST /api/book: Yeni randevu kaydeder
@@ -106,17 +101,15 @@ router.post('/book', async (req, res) => {
         return res.status(400).send({ message: 'Lütfen tüm alanları doldurun.' });
     }
 
-    const durationMinutes = getServiceDurationMinutes(service_type); // Hizmet süresini al
+    const durationMinutes = getServiceDurationMinutes(service_type); 
     
     const [hour, minute] = time.split(':').map(Number);
     const startDateTime = new Date(date);
     startDateTime.setHours(hour, minute, 0, 0); 
     
-    // Hizmet süresine göre bitiş zamanını hesapla
     const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000); 
     
     try {
-        // 1. Kullanıcıyı bul veya oluştur (Mongoose upsert/find)
         let user = await User.findOneAndUpdate(
             { phone_number: phone_number }, 
             { name: name },                 
@@ -124,9 +117,20 @@ router.post('/book', async (req, res) => {
         );
         let userId = user._id;
 
-        // 2. Randevu Çakışma Kontrolü ve Kaydetme (ÖNEMLİ: Çift slot kontrolü için geliştirilmesi gerekecek)
-        // Şu anki kod sadece başlangıç saatinde çakışmayı kontrol eder. Daha karmaşık çakışma kontrolü sonraki adımda yapılacak.
+        // KAPSAMLI ÇAKIŞMA KONTROLÜ
+        const conflictingAppointment = await Appointment.findOne({
+            $or: [
+                { start_time: { $lt: endDateTime }, end_time: { $gt: startDateTime } }
+            ]
+        });
+
+        if (conflictingAppointment) {
+             return res.status(409).send({ 
+                message: 'Üzgünüz, seçtiğiniz saat dilimi başka bir randevu ile çakışıyor. Lütfen başka bir saat seçin.' 
+            });
+        }
         
+        // Randevuyu Kaydetme
         const newAppointment = new Appointment({
             user_id: userId,
             start_time: startDateTime,
@@ -154,47 +158,67 @@ router.post('/book', async (req, res) => {
         res.status(500).send({ message: 'Sunucu hatası oluştu, randevu kaydedilemedi.' });
     }
 });
-// routes/appointmentRoutes.js (Randevu İptal Rotası Eklendi)
 
-// DELETE /api/cancel: Telefon numarası ve randevu saati ile randevuyu siler
-router.delete('/cancel', async (req, res) => {
-    const { phone_number, date, time } = req.body;
 
-    if (!phone_number || !date || !time) {
-        return res.status(400).send({ message: 'Lütfen telefon numarası, tarih ve saat bilgilerini eksiksiz doldurun.' });
+// POST /api/user-appointments: Telefon numarasıyla aktif randevuları listeler (İptal ekranı için)
+router.post('/user-appointments', async (req, res) => {
+    const { phone_number } = req.body;
+
+    if (!phone_number) {
+        return res.status(400).send({ message: 'Telefon numarası gereklidir.' });
     }
     
-    // Tarih ve saat bilgisini Date objesine dönüştür
-    const [hour, minute] = time.split(':').map(Number);
-    const startDateTime = new Date(date);
-    startDateTime.setHours(hour, minute, 0, 0); 
+    const now = new Date();
 
     try {
-        // 1. Kullanıcıyı Telefon Numarası ile bul
         const user = await User.findOne({ phone_number: phone_number });
         
         if (!user) {
-            return res.status(404).send({ message: 'Bu telefon numarasına ait kullanıcı bulunamadı.' });
+            return res.status(404).send({ message: 'Bu numaraya kayıtlı aktif randevu bulunmamaktadır.' });
         }
 
-        // 2. Kullanıcının ID'si ve Randevu Saati ile randevuyu bul ve sil
-        const result = await Appointment.deleteOne({
+        const activeAppointments = await Appointment.find({
             user_id: user._id,
-            start_time: startDateTime
+            start_time: { $gte: now } 
+        }).sort({ start_time: 1 }); 
+
+        if (activeAppointments.length === 0) {
+            return res.status(404).send({ message: 'Bu numaraya kayıtlı aktif randevu bulunmamaktadır.' });
+        }
+
+        res.status(200).send({ 
+            appointments: activeAppointments.map(app => ({
+                id: app._id,
+                time: app.start_time,
+                service: app.service_type
+            }))
         });
 
+    } catch (error) {
+        console.error('Kullanıcı randevuları listeleme hatası:', error);
+        res.status(500).send({ message: 'Sunucu hatası oluştu.' });
+    }
+});
+
+
+// DELETE /api/cancel-id/:id: Randevu ID'si ile randevuyu siler
+router.delete('/cancel-id/:id', async (req, res) => {
+    const appointmentId = req.params.id;
+
+    try {
+        const result = await Appointment.deleteOne({ _id: appointmentId });
+
         if (result.deletedCount === 0) {
-            return res.status(404).send({ message: 'Bu kullanıcıya ait bu saatte kayıtlı randevu bulunamadı.' });
+            return res.status(404).send({ message: 'Randevu bulunamadı veya daha önce iptal edilmiş.' });
         }
 
         res.status(200).send({ message: 'Randevunuz başarıyla iptal edilmiştir.' });
 
     } catch (error) {
-        console.error('Randevu iptali sırasında hata:', error);
-        res.status(500).send({ message: 'Sunucu hatası oluştu, randevu iptal edilemedi.' });
+        console.error('Randevu ID ile iptal hatası:', error);
+        res.status(500).send({ message: 'Sunucu hatası oluştu, iptal edilemedi.' });
     }
 });
 
-module.exports = router;
 
 module.exports = router;
