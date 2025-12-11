@@ -2,7 +2,8 @@
 
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer'); 
+const sgTransport = require('nodemailer-sendgrid-transport');
 
 // Modelleri içeri aktarma
 const User = require('../models/User');
@@ -13,20 +14,56 @@ const Schedule = require('../models/Schedule');
 const getServiceDurationMinutes = (serviceType) => {
     return 30; 
 }
-const transporter = nodemailer.createTransport({
-    host: 'smtp-mail.outlook.com', // OUTLOOK/HOTMAIL HOST
-    port: 587, 
-    secure: false, // TLS kullanmak için
+const options = {
     auth: {
-        user: process.env.EMAIL_USER, // Yeni Outlook/Hotmail E-posta Adresiniz
-        pass: process.env.EMAIL_PASS  // Microsoft'tan aldığınız Uygulama Şifreniz
-    },
-    // Outlook için bağlantıyı güvenceye almak amacıyla bu ayarı ekliyoruz
-    tls: {
-        ciphers:'SSLv3', 
-        rejectUnauthorized: false
+        api_key: process.env.SENDGRID_API_KEY // API Anahtarını kullan
     }
-});
+}
+
+const transporter = nodemailer.createTransport(sgTransport(options));
+
+// Yeni Randevu Onayı E-postası Gönderme Fonksiyonu
+async function sendAppointmentConfirmation(name, phone, date, time, service) {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDER_EMAIL) {
+        console.error("SENDGRID: API Anahtarı veya Gönderici E-postası eksik. Bildirim gönderilemiyor.");
+        return;
+    }
+    
+    // ... (Tarih formatlama kısmı aynı kalır) ...
+    const appointmentTime = new Date(date + ' ' + time);
+    const formattedDate = appointmentTime.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const formattedTime = appointmentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    
+    // Berbere gönderilecek e-posta içeriği
+    const mailOptions = {
+        from: process.env.SENDER_EMAIL, // SendGrid'de doğrulanmış E-posta
+        to: process.env.SENDER_EMAIL, // Berbere bildirim için aynı adrese gönderelim
+        subject: `[KYK RANDV] Yeni Randevu Alındı: ${formattedDate} ${formattedTime}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                <h2 style="color: #004d99;">💈 Yeni Randevu Bildirimi</h2>
+                <hr style="border: 0; border-top: 1px solid #eee;">
+                <p>Aşağıdaki müşteri için yeni bir randevu başarıyla kaydedildi:</p>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px;"><strong>Müşteri Adı:</strong> ${name}</li>
+                    <li style="margin-bottom: 10px;"><strong>Telefon No:</strong> ${phone}</li>
+                    <li style="margin-bottom: 10px;"><strong>Tarih:</strong> ${formattedDate}</li>
+                    <li style="margin-bottom: 10px;"><strong>Saat:</strong> <span style="font-size: 1.2em; color: #cc0000; font-weight: bold;">${formattedTime}</span></li>
+                    <li style="margin-bottom: 10px;"><strong>Hizmet:</strong> ${service}</li>
+                </ul>
+                <p style="font-size: 0.9em; color: #777;">Bu bildirim otomatik olarak gönderilmiştir. Yönetim panelinden kontrol ediniz.</p>
+            </div>
+        `
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('SENDGRID E-POSTA: Yeni randevu bildirimi başarıyla gönderildi.');
+    } catch (error) {
+        // Hata alırsak, detaylı hata mesajını görmeliyiz
+        console.error('SENDGRID E-POSTA: Bildirim gönderme hatası:', error.message);
+    }
+}
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         console.error("E-POSTA: Kullanıcı veya Uygulama Şifresi eksik. E-posta gönderilemiyor.");
