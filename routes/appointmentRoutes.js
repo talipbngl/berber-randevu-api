@@ -14,10 +14,16 @@ const getServiceDurationMinutes = (serviceType) => {
     return 30; 
 }
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Eğer Gmail kullanacaksanız bu kalabilir
+    host: 'smtp.gmail.com',
+    port: 587, // KRİTİK DEĞİŞİKLİK: 587 (TLS) kullan
+    secure: false, // secure: false olduğunda TLS kullanılır
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
+    },
+    // Nodemailer'ın TLS sertifikalarını doğru işlemesini sağlamak için
+    tls: {
+        rejectUnauthorized: false
     }
 });
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
