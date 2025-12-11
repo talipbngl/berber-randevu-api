@@ -12,6 +12,8 @@ const adminRoutes = require('./routes/adminRoutes');           // Yönetici Rota
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+
 // *** 1. MongoDB Bağlantısı ***
 const MONGODB_URI = process.env.MONGODB_URI;
 
