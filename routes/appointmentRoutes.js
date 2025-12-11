@@ -14,15 +14,16 @@ const getServiceDurationMinutes = (serviceType) => {
     return 30; 
 }
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587, // KRİTİK DEĞİŞİKLİK: 587 (TLS) kullan
-    secure: false, // secure: false olduğunda TLS kullanılır
+    host: 'smtp-mail.outlook.com', // OUTLOOK/HOTMAIL HOST
+    port: 587, 
+    secure: false, // TLS kullanmak için
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.EMAIL_USER, // Yeni Outlook/Hotmail E-posta Adresiniz
+        pass: process.env.EMAIL_PASS  // Microsoft'tan aldığınız Uygulama Şifreniz
     },
-    // Nodemailer'ın TLS sertifikalarını doğru işlemesini sağlamak için
+    // Outlook için bağlantıyı güvenceye almak amacıyla bu ayarı ekliyoruz
     tls: {
+        ciphers:'SSLv3', 
         rejectUnauthorized: false
     }
 });
