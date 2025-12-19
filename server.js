@@ -59,5 +59,5 @@ app.get('/admin.html', (req, res) => {
 
 // Sunucu
 app.listen(PORT, () => {
-  console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor...`);
+  console.log(`Sunucu ${PORT} portunda çalışıyor...`);
 });

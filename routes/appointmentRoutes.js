@@ -24,6 +24,11 @@ function buildGmailTransporter() {
 }
 
 const gmailTransporter = buildGmailTransporter();
+console.log("MAIL DEBUG:", {
+  hasUser: !!process.env.EMAIL_USER,
+  hasPass: !!process.env.EMAIL_PASS
+});
+
 
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
   if (!gmailTransporter) {
