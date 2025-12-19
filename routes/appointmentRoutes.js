@@ -11,22 +11,58 @@ const Schedule = require('../models/Schedule');
 const getServiceDurationMinutes = () => 30;
 
 // --- E-POSTA: SADECE GMAIL ---
-function buildGmailTransporter() {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return null;
+const nodemailer = require('nodemailer');
+
+function buildGmailOAuthTransporter() {
+  const user = process.env.EMAIL_USER;
+  const clientId = process.env.GMAIL_CLIENT_ID;
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+
+  if (!user || !clientId || !clientSecret || !refreshToken) {
+    console.warn('E-POSTA: OAuth env eksik');
+    return null;
+  }
 
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // 587 için false
+    service: 'gmail',
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      type: 'OAuth2',
+      user,
+      clientId,
+      clientSecret,
+      refreshToken,
     },
-    connectionTimeout: 20000, // 20 sn
-    greetingTimeout: 20000,
-    socketTimeout: 20000,
   });
 }
+
+const gmailTransporter = buildGmailOAuthTransporter();
+
+async function sendAppointmentConfirmation(name, phone, date, time, service) {
+  if (!gmailTransporter) return;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: process.env.EMAIL_USER,
+    subject: 'Yeni Randevu',
+    html: `
+      <h3>Yeni Randevu</h3>
+      <p><b>İsim:</b> ${name}</p>
+      <p><b>Telefon:</b> ${phone}</p>
+      <p><b>Tarih:</b> ${date}</p>
+      <p><b>Saat:</b> ${time}</p>
+      <p><b>Hizmet:</b> ${service}</p>
+    `,
+  };
+
+  try {
+    await gmailTransporter.sendMail(mailOptions);
+    console.log('✅ E-POSTA: Gmail OAuth2 ile gönderildi');
+  } catch (err) {
+    console.error('❌ E-POSTA HATASI:', err.message);
+  }
+}
+
 
 
 const gmailTransporter = buildGmailTransporter();
