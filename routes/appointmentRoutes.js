@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 const nodemailer = require('nodemailer');
-const sgTransport = require('nodemailer-sendgrid-transport');
 
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
@@ -11,36 +10,24 @@ const Schedule = require('../models/Schedule');
 // Tüm hizmetler 30 dk
 const getServiceDurationMinutes = () => 30;
 
-// --- E-POSTA / BİLDİRİM (TEK ve ÇALIŞIR HAL) ---
-function buildTransporter() {
-  // 1) SendGrid varsa (önerilen)
-  if (process.env.SENDGRID_API_KEY && process.env.SENDER_EMAIL) {
-    const options = {
-      auth: { api_key: process.env.SENDGRID_API_KEY },
-    };
-    return { type: 'sendgrid', transporter: nodemailer.createTransport(sgTransport(options)) };
-  }
+// --- E-POSTA: SADECE GMAIL ---
+function buildGmailTransporter() {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) return null;
 
-  // 2) SMTP/Gmail varsa
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Gmail App Password
-      },
-    });
-    return { type: 'smtp', transporter };
-  }
-
-  return { type: 'none', transporter: null };
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // Gmail App Password
+    },
+  });
 }
 
-const mailer = buildTransporter();
+const gmailTransporter = buildGmailTransporter();
 
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
-  if (mailer.type === 'none') {
-    console.warn('E-POSTA: Gönderim için SENDGRID veya EMAIL_USER/EMAIL_PASS tanımlı değil. Mail atlanıyor.');
+  if (!gmailTransporter) {
+    console.warn('E-POSTA: EMAIL_USER veya EMAIL_PASS eksik. Mail gönderimi atlandı.');
     return;
   }
 
@@ -51,19 +38,20 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
     month: 'long',
     year: 'numeric',
   });
-  const formattedTime = appointmentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-
-  const fromEmail = process.env.SENDER_EMAIL || process.env.EMAIL_USER;
-  const toEmail = process.env.SENDER_EMAIL || process.env.EMAIL_USER;
+  const formattedTime = appointmentTime.toLocaleTimeString('tr-TR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const mailOptions = {
-    from: fromEmail,
-    to: toEmail,
+    from: process.env.EMAIL_USER,
+    to: process.env.EMAIL_USER, // bildirim kendine gitsin (berbere)
     subject: `[KYK RANDV] Yeni Randevu: ${formattedDate} ${formattedTime}`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
         <h2 style="color: #004d99;">Yeni Randevu Bildirimi</h2>
         <hr style="border: 0; border-top: 1px solid #eee;">
+        <p>Aşağıdaki müşteri için yeni randevu kaydedildi:</p>
         <ul style="list-style: none; padding: 0;">
           <li style="margin-bottom: 10px;"><strong>Müşteri:</strong> ${name}</li>
           <li style="margin-bottom: 10px;"><strong>Telefon:</strong> ${phone}</li>
@@ -77,10 +65,10 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
   };
 
   try {
-    await mailer.transporter.sendMail(mailOptions);
-    console.log(`E-POSTA: Bildirim gönderildi (${mailer.type}).`);
+    await gmailTransporter.sendMail(mailOptions);
+    console.log('E-POSTA: Gmail bildirimi gönderildi.');
   } catch (error) {
-    console.error('E-POSTA: Bildirim gönderme hatası:', error.message);
+    console.error('E-POSTA: Gmail gönderim hatası:', error.message);
   }
 }
 
@@ -118,12 +106,11 @@ router.get('/slots', async (req, res) => {
 
       const slotStr =
         String(currentTime.getHours()).padStart(2, '0') + ':' + String(currentTime.getMinutes()).padStart(2, '0');
-      allSlots.push(slotStr);
 
+      allSlots.push(slotStr);
       currentTime = new Date(currentTime.getTime() + appointmentDuration * 60000);
     }
 
-    // O günün randevuları
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 
@@ -132,7 +119,7 @@ router.get('/slots', async (req, res) => {
 
     const bookedAppointments = await Appointment.find({
       start_time: { $gte: startOfDay, $lte: endOfDay },
-      status: { $ne: 'Canceled' }, // iptal edilenler slotu bloklamasın
+      status: { $ne: 'Canceled' },
     });
 
     const blockedSet = new Set();
@@ -169,6 +156,7 @@ router.post('/book', async (req, res) => {
 
   const [hour, minute] = String(time).split(':').map(Number);
   const startDateTime = new Date(date);
+
   if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(hour) || Number.isNaN(minute)) {
     return res.status(400).send({ message: 'Tarih veya saat formatı geçersiz.' });
   }
@@ -183,7 +171,6 @@ router.post('/book', async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
     );
 
-    // Kapsamlı çakışma kontrolü (overlap)
     const conflict = await Appointment.findOne({
       status: { $ne: 'Canceled' },
       start_time: { $lt: endDateTime },
@@ -205,7 +192,7 @@ router.post('/book', async (req, res) => {
 
     await newAppointment.save();
 
-    // Mail (await etmiyoruz, kullanıcıyı bekletmesin)
+    // Mail kullanıcıyı bekletmesin
     sendAppointmentConfirmation(name, phone_number, date, time, service_type);
 
     res.status(201).send({
@@ -288,9 +275,11 @@ router.delete('/cancel', async (req, res) => {
 
   const [hour, minute] = String(time).split(':').map(Number);
   const startDateTime = new Date(date);
+
   if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(hour) || Number.isNaN(minute)) {
     return res.status(400).send({ message: 'Tarih veya saat formatı geçersiz.' });
   }
+
   startDateTime.setHours(hour, minute, 0, 0);
 
   try {
