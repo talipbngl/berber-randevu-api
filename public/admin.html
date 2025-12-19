@@ -1,101 +1,100 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yönetim Paneli | KYK Berber</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .bg-primary { background-color: #004d99; }
-        .text-primary { color: #004d99; }
-        .table-header { background-color: #f1f5f9; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yönetim Paneli | KYK Berber</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .bg-primary { background-color: #004d99; }
+    .text-primary { color: #004d99; }
+    .table-header { background-color: #f1f5f9; }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-8">
 
-    <div class="max-w-6xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-xl">
-        
-        <header class="text-center mb-10 border-b pb-5">
-            <h1 class="text-4xl font-extrabold text-gray-900 mb-2 flex items-center justify-center space-x-3">
-                <i class="fas fa-lock text-3xl text-primary"></i> 
-                <span>Yönetim Paneli</span>
-            </h1>
-            <p class="text-md text-gray-500">Randevuları ve Çalışma Saatlerini Yönetin</p>
-        </header>
+  <div class="max-w-6xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-xl">
 
-        <div id="auth-section">
-            <form id="auth-form" class="max-w-sm mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
-                <label for="admin-pass" class="block text-lg font-semibold text-gray-700 mb-3">Yönetici Parolası:</label>
-                <input type="password" id="admin-pass" required
-                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 shadow-sm mb-4">
-                <button type="submit" class="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition duration-150">Giriş Yap</button>
-                <p id="auth-message" class="text-center mt-3 text-red-500"></p>
-            </form>
-        </div>
+    <header class="text-center mb-10 border-b pb-5">
+      <h1 class="text-4xl font-extrabold text-gray-900 mb-2 flex items-center justify-center space-x-3">
+        <i class="fas fa-lock text-3xl text-primary"></i>
+        <span>Yönetim Paneli</span>
+      </h1>
+      <p class="text-md text-gray-500">Randevuları ve Çalışma Saatlerini Yönetin</p>
+    </header>
 
-        <div id="admin-content" class="hidden">
-
-            <section class="mb-10 p-6 border rounded-lg shadow-sm">
-                <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📅 Çalışma Saatleri Güncelleme</h2>
-                <form id="schedule-form" class="flex flex-wrap items-end gap-4 max-w-xl">
-                    <div>
-                        <label for="day" class="block text-sm font-medium text-gray-700">Gün Seçin:</label>
-                        <select id="day" required class="px-3 py-2 border rounded-lg bg-white">
-                            <option value="1">Pazartesi</option>
-                            <option value="2">Salı</option>
-                            <option value="3">Çarşamba</option>
-                            <option value="4">Perşembe</option>
-                            <option value="5">Cuma</option>
-                            <option value="6">Cumartesi</option>
-                            <option value="7">Pazar</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="start" class="block text-sm font-medium text-gray-700">Başlangıç Saati:</label>
-                        <input type="time" id="start" required class="px-3 py-2 border rounded-lg bg-white">
-                    </div>
-                    <div>
-                        <label for="end" class="block text-sm font-medium text-gray-700">Bitiş Saati:</label>
-                        <input type="time" id="end" required class="px-3 py-2 border rounded-lg bg-white">
-                    </div>
-                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition duration-150">
-                        Kaydet
-                    </button>
-                </form>
-                <p id="schedule-message" class="mt-3 font-semibold"></p>
-            </section>
-
-            <section>
-                <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📋 Tüm Randevular</h2>
-                <div class="overflow-x-auto bg-white rounded-lg shadow">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="table-header">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tarih / Saat</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Müşteri Adı</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Telefon</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Hizmet</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID</th>
-
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Durum</th>
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Eylem</th>
-
-                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID</th>
-                            </tr>
-                        </thead>
-                        <tbody id="appointments-body" class="divide-y divide-gray-200">
-                            </tbody>
-                    </table>
-                </div>
-                <p id="randevu-sayisi" class="text-sm text-gray-600 mt-4"></p>
-                <p id="list-message" class="text-red-500 mt-4 font-semibold"></p>
-            </section>
-
-        </div>
+    <div id="auth-section">
+      <form id="auth-form" class="max-w-sm mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
+        <label for="admin-pass" class="block text-lg font-semibold text-gray-700 mb-3">Yönetici Parolası:</label>
+        <input type="password" id="admin-pass" required
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 shadow-sm mb-4" />
+        <button type="submit"
+                class="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition duration-150">
+          Giriş Yap
+        </button>
+        <p id="auth-message" class="text-center mt-3 text-red-500"></p>
+      </form>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
-    <script src="admin.js"></script>
+    <div id="admin-content" class="hidden">
+
+      <section class="mb-10 p-6 border rounded-lg shadow-sm">
+        <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📅 Çalışma Saatleri Güncelleme</h2>
+        <form id="schedule-form" class="flex flex-wrap items-end gap-4 max-w-xl">
+          <div>
+            <label for="day" class="block text-sm font-medium text-gray-700">Gün Seçin:</label>
+            <select id="day" required class="px-3 py-2 border rounded-lg bg-white">
+              <option value="1">Pazartesi</option>
+              <option value="2">Salı</option>
+              <option value="3">Çarşamba</option>
+              <option value="4">Perşembe</option>
+              <option value="5">Cuma</option>
+              <option value="6">Cumartesi</option>
+              <option value="7">Pazar</option>
+            </select>
+          </div>
+          <div>
+            <label for="start" class="block text-sm font-medium text-gray-700">Başlangıç Saati:</label>
+            <input type="time" id="start" required class="px-3 py-2 border rounded-lg bg-white" />
+          </div>
+          <div>
+            <label for="end" class="block text-sm font-medium text-gray-700">Bitiş Saati:</label>
+            <input type="time" id="end" required class="px-3 py-2 border rounded-lg bg-white" />
+          </div>
+          <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition duration-150">
+            Kaydet
+          </button>
+        </form>
+        <p id="schedule-message" class="mt-3 font-semibold"></p>
+      </section>
+
+      <section>
+        <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📋 Tüm Randevular</h2>
+        <div class="overflow-x-auto bg-white rounded-lg shadow">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="table-header">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tarih / Saat</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Müşteri Adı</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Telefon</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Hizmet</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Durum</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Eylem</th>
+              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Randevu ID</th>
+            </tr>
+            </thead>
+            <tbody id="appointments-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+        <p id="randevu-sayisi" class="text-sm text-gray-600 mt-4"></p>
+        <p id="list-message" class="text-red-500 mt-4 font-semibold"></p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>

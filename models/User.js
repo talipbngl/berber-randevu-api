@@ -1,9 +1,11 @@
 const mongoose = require('mongoose');
 
-// Kullanıcı Şeması
-const UserSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    phone_number: { type: String, required: true, unique: true },
-});
+const UserSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    phone_number: { type: String, required: true, unique: true, trim: true },
+  },
+  { timestamps: true }
+);
 
 module.exports = mongoose.model('User', UserSchema);
