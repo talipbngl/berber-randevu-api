@@ -24,13 +24,14 @@ function buildGmailTransporter() {
 }
 
 const gmailTransporter = buildGmailTransporter();
-console.log("MAIL DEBUG:", {
-  hasUser: !!process.env.EMAIL_USER,
-  hasPass: !!process.env.EMAIL_PASS
-});
+
 
 
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
+  console.log("MAIL DEBUG:", {
+  hasUser: !!process.env.EMAIL_USER,
+  hasPass: !!process.env.EMAIL_PASS
+});
   if (!gmailTransporter) {
     console.warn('E-POSTA: EMAIL_USER veya EMAIL_PASS eksik. Mail gönderimi atlandı.');
     return;
