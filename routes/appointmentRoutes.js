@@ -10,9 +10,9 @@ const Schedule = require('../models/Schedule');
 // Tüm hizmetler 30 dk
 const getServiceDurationMinutes = () => 30;
 
-// --- E-POSTA: SADECE GMAIL ---
-const nodemailer = require('nodemailer');
-
+// ===============================
+//  MAIL (SADECE GMAIL OAUTH2)
+// ===============================
 function buildGmailOAuthTransporter() {
   const user = process.env.EMAIL_USER;
   const clientId = process.env.GMAIL_CLIENT_ID;
@@ -20,7 +20,7 @@ function buildGmailOAuthTransporter() {
   const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
 
   if (!user || !clientId || !clientSecret || !refreshToken) {
-    console.warn('E-POSTA: OAuth env eksik');
+    console.warn('E-POSTA: OAuth env eksik (EMAIL_USER / GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN).');
     return null;
   }
 
@@ -39,49 +39,8 @@ function buildGmailOAuthTransporter() {
 const gmailTransporter = buildGmailOAuthTransporter();
 
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
-  if (!gmailTransporter) return;
-
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: process.env.EMAIL_USER,
-    subject: 'Yeni Randevu',
-    html: `
-      <h3>Yeni Randevu</h3>
-      <p><b>İsim:</b> ${name}</p>
-      <p><b>Telefon:</b> ${phone}</p>
-      <p><b>Tarih:</b> ${date}</p>
-      <p><b>Saat:</b> ${time}</p>
-      <p><b>Hizmet:</b> ${service}</p>
-    `,
-  };
-
-  try {
-    await gmailTransporter.sendMail(mailOptions);
-    console.log('✅ E-POSTA: Gmail OAuth2 ile gönderildi');
-  } catch (err) {
-    console.error('❌ E-POSTA HATASI:', err.message);
-  }
-}
-
-
-
-const gmailTransporter = buildGmailTransporter();
-if (gmailTransporter) {
-  gmailTransporter.verify((err, success) => {
-    if (err) console.error("SMTP VERIFY HATASI:", err.message);
-    else console.log("SMTP VERIFY OK");
-  });
-}
-
-
-
-async function sendAppointmentConfirmation(name, phone, date, time, service) {
-  console.log("MAIL DEBUG:", {
-  hasUser: !!process.env.EMAIL_USER,
-  hasPass: !!process.env.EMAIL_PASS
-});
   if (!gmailTransporter) {
-    console.warn('E-POSTA: EMAIL_USER veya EMAIL_PASS eksik. Mail gönderimi atlandı.');
+    console.warn('E-POSTA: Transporter yok. Mail atlandı.');
     return;
   }
 
@@ -99,13 +58,12 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: process.env.EMAIL_USER, // bildirim kendine gitsin (berbere)
+    to: process.env.EMAIL_USER, // berbere bildirim: kendine
     subject: `[KYK RANDV] Yeni Randevu: ${formattedDate} ${formattedTime}`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
         <h2 style="color: #004d99;">Yeni Randevu Bildirimi</h2>
         <hr style="border: 0; border-top: 1px solid #eee;">
-        <p>Aşağıdaki müşteri için yeni randevu kaydedildi:</p>
         <ul style="list-style: none; padding: 0;">
           <li style="margin-bottom: 10px;"><strong>Müşteri:</strong> ${name}</li>
           <li style="margin-bottom: 10px;"><strong>Telefon:</strong> ${phone}</li>
@@ -120,13 +78,15 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
 
   try {
     await gmailTransporter.sendMail(mailOptions);
-    console.log('E-POSTA: Gmail bildirimi gönderildi.');
-  } catch (error) {
-    console.error('E-POSTA: Gmail gönderim hatası:', error.message);
+    console.log('✅ E-POSTA: Gmail OAuth2 ile gönderildi.');
+  } catch (err) {
+    console.error('❌ E-POSTA: Gmail OAuth2 gönderim hatası:', err.message);
   }
 }
 
-// --- SLOT LISTELEME ---
+// ===============================
+//  SLOT LISTELEME
+// ===============================
 router.get('/slots', async (req, res) => {
   const { date } = req.query;
   if (!date) return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
@@ -198,7 +158,9 @@ router.get('/slots', async (req, res) => {
   }
 });
 
-// --- RANDEVU AL ---
+// ===============================
+//  RANDEVU AL
+// ===============================
 router.post('/book', async (req, res) => {
   const { name, phone_number, date, time, service_type } = req.body;
 
@@ -267,7 +229,9 @@ router.post('/book', async (req, res) => {
   }
 });
 
-// --- KULLANICININ AKTİF RANDEVULARI ---
+// ===============================
+//  KULLANICININ AKTİF RANDEVULARI
+// ===============================
 router.post('/user-appointments', async (req, res) => {
   const { phone_number } = req.body;
   if (!phone_number) return res.status(400).send({ message: 'Telefon numarası gereklidir.' });
@@ -301,7 +265,9 @@ router.post('/user-appointments', async (req, res) => {
   }
 });
 
-// --- ID İLE İPTAL (Modal) ---
+// ===============================
+//  ID İLE İPTAL (Modal)
+// ===============================
 router.delete('/cancel-id/:id', async (req, res) => {
   const appointmentId = req.params.id;
 
@@ -319,7 +285,9 @@ router.delete('/cancel-id/:id', async (req, res) => {
   }
 });
 
-// --- TELEFON + TARİH + SAAT İLE İPTAL (cancel.html düzelsin diye) ---
+// ===============================
+//  TELEFON + TARİH + SAAT İLE İPTAL
+// ===============================
 router.delete('/cancel', async (req, res) => {
   const { phone_number, date, time } = req.body;
 
