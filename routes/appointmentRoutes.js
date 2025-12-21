@@ -39,10 +39,19 @@ function buildGmailOAuthTransporter() {
 const gmailTransporter = buildGmailOAuthTransporter();
 
 async function sendAppointmentConfirmation(name, phone, date, time, service) {
+  console.log("📩 sendAppointmentConfirmation başladı");
+
   if (!gmailTransporter) {
-    console.warn('E-POSTA: Transporter yok. Mail atlandı.');
+    console.warn("❌ gmailTransporter NULL -> OAuth env eksik olabilir");
     return;
   }
+
+  console.log("✅ gmailTransporter var, sendMail deneniyor...", {
+    user: process.env.EMAIL_USER,
+    hasClientId: !!process.env.GMAIL_CLIENT_ID,
+    hasSecret: !!process.env.GMAIL_CLIENT_SECRET,
+    hasRefresh: !!process.env.GMAIL_REFRESH_TOKEN,
+  });
 
   const appointmentTime = new Date(`${date} ${time}`);
   const formattedDate = appointmentTime.toLocaleDateString('tr-TR', {
@@ -58,7 +67,7 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
-    to: process.env.EMAIL_USER, // berbere bildirim: kendine
+    to: process.env.EMAIL_USER,
     subject: `[KYK RANDV] Yeni Randevu: ${formattedDate} ${formattedTime}`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
@@ -77,12 +86,14 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
   };
 
   try {
-    await gmailTransporter.sendMail(mailOptions);
-    console.log('✅ E-POSTA: Gmail OAuth2 ile gönderildi.');
+    const info = await gmailTransporter.sendMail(mailOptions);
+    console.log("✅ SENDMAIL OK:", info?.response || info?.messageId || info);
   } catch (err) {
-    console.error('❌ E-POSTA: Gmail OAuth2 gönderim hatası:', err.message);
+    console.error("❌ SENDMAIL ERROR FULL:", err);        // <-- asıl önemli
+    console.error("❌ SENDMAIL ERROR MSG:", err?.message);
   }
 }
+
 
 // ===============================
 //  SLOT LISTELEME
