@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const nodemailer = require('nodemailer');
+const { google } = require('google-auth-library');
 
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
@@ -11,20 +12,53 @@ const Schedule = require('../models/Schedule');
 const getServiceDurationMinutes = () => 30;
 
 // ===============================
-//  MAIL (SADECE GMAIL OAUTH2)
+//  MAIL (SADECE GMAIL OAUTH2 - Render uyumlu)
 // ===============================
-function buildGmailOAuthTransporter() {
+function buildGmailOAuthClient() {
   const user = process.env.EMAIL_USER;
   const clientId = process.env.GMAIL_CLIENT_ID;
   const clientSecret = process.env.GMAIL_CLIENT_SECRET;
   const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
 
   if (!user || !clientId || !clientSecret || !refreshToken) {
-    console.warn('E-POSTA: OAuth env eksik (EMAIL_USER / GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN).');
+    console.warn(
+      'E-POSTA: OAuth env eksik (EMAIL_USER / GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN).'
+    );
     return null;
   }
 
-  return nodemailer.createTransport({
+  const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret);
+  oAuth2Client.setCredentials({ refresh_token: refreshToken });
+
+  return { user, clientId, clientSecret, refreshToken, oAuth2Client };
+}
+
+const gmailAuth = buildGmailOAuthClient();
+
+async function sendAppointmentConfirmation(name, phone, date, time, service) {
+  if (!gmailAuth) {
+    console.warn('E-POSTA: gmailAuth yok, mail atlandı.');
+    return;
+  }
+
+  const { user, clientId, clientSecret, refreshToken, oAuth2Client } = gmailAuth;
+
+  // 1) Access token al
+  let accessToken;
+  try {
+    const tokenResponse = await oAuth2Client.getAccessToken();
+    accessToken = tokenResponse?.token;
+
+    if (!accessToken) {
+      throw new Error('Access token alınamadı (token boş).');
+    }
+  } catch (err) {
+    console.error('E-POSTA: Access token alma hatası:', err?.message || err);
+    return;
+  }
+
+  // 2) Transporter (timeout’lu)
+  const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
       type: 'OAuth2',
@@ -32,25 +66,11 @@ function buildGmailOAuthTransporter() {
       clientId,
       clientSecret,
       refreshToken,
+      accessToken,
     },
-  });
-}
-
-const gmailTransporter = buildGmailOAuthTransporter();
-
-async function sendAppointmentConfirmation(name, phone, date, time, service) {
-  console.log("📩 sendAppointmentConfirmation başladı");
-
-  if (!gmailTransporter) {
-    console.warn("❌ gmailTransporter NULL -> OAuth env eksik olabilir");
-    return;
-  }
-
-  console.log("✅ gmailTransporter var, sendMail deneniyor...", {
-    user: process.env.EMAIL_USER,
-    hasClientId: !!process.env.GMAIL_CLIENT_ID,
-    hasSecret: !!process.env.GMAIL_CLIENT_SECRET,
-    hasRefresh: !!process.env.GMAIL_REFRESH_TOKEN,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
   });
 
   const appointmentTime = new Date(`${date} ${time}`);
@@ -66,8 +86,8 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
   });
 
   const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: process.env.EMAIL_USER,
+    from: user,
+    to: user, // berbere bildirim: kendine
     subject: `[KYK RANDV] Yeni Randevu: ${formattedDate} ${formattedTime}`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
@@ -86,14 +106,12 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
   };
 
   try {
-    const info = await gmailTransporter.sendMail(mailOptions);
-    console.log("✅ SENDMAIL OK:", info?.response || info?.messageId || info);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ E-POSTA: Gmail OAuth2 ile gönderildi.', info?.messageId || info?.response || '');
   } catch (err) {
-    console.error("❌ SENDMAIL ERROR FULL:", err);        // <-- asıl önemli
-    console.error("❌ SENDMAIL ERROR MSG:", err?.message);
+    console.error('❌ E-POSTA: Gmail OAuth2 gönderim hatası:', err?.message || err);
   }
 }
-
 
 // ===============================
 //  SLOT LISTELEME
@@ -173,7 +191,8 @@ router.get('/slots', async (req, res) => {
 //  RANDEVU AL
 // ===============================
 router.post('/book', async (req, res) => {
-  console.log("✅ /api/book HIT", { body: req.body });
+  console.log('✅ /api/book HIT', { body: req.body });
+
   const { name, phone_number, date, time, service_type } = req.body;
 
   if (!name || !phone_number || !date || !time || !service_type) {
@@ -220,9 +239,9 @@ router.post('/book', async (req, res) => {
 
     await newAppointment.save();
 
-    console.log("✅ Mail fonksiyonu çağrılacak");
+    console.log('✅ Mail fonksiyonu çağrılacak');
     sendAppointmentConfirmation(name, phone_number, date, time, service_type);
-    console.log("✅ Mail fonksiyonu çağrıldı");
+    console.log('✅ Mail fonksiyonu çağrıldı');
 
     res.status(201).send({
       message: 'Randevunuz başarıyla oluşturuldu.',
