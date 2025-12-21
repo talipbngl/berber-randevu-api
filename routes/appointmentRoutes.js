@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const nodemailer = require('nodemailer');
-const { google } = require('google-auth-library');
+const { OAuth2Client } = require('google-auth-library');
 
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
@@ -27,7 +27,7 @@ function buildGmailOAuthClient() {
     return null;
   }
 
-  const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret);
+  const oAuth2Client = new OAuth2Client(clientId, clientSecret);
   oAuth2Client.setCredentials({ refresh_token: refreshToken });
 
   return { user, clientId, clientSecret, refreshToken, oAuth2Client };
@@ -49,9 +49,7 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
     const tokenResponse = await oAuth2Client.getAccessToken();
     accessToken = tokenResponse?.token;
 
-    if (!accessToken) {
-      throw new Error('Access token alınamadı (token boş).');
-    }
+    if (!accessToken) throw new Error('Access token alınamadı (token boş).');
   } catch (err) {
     console.error('E-POSTA: Access token alma hatası:', err?.message || err);
     return;
@@ -87,7 +85,7 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
 
   const mailOptions = {
     from: user,
-    to: user, // berbere bildirim: kendine
+    to: user,
     subject: `[KYK RANDV] Yeni Randevu: ${formattedDate} ${formattedTime}`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
@@ -298,7 +296,7 @@ router.post('/user-appointments', async (req, res) => {
 });
 
 // ===============================
-//  ID İLE İPTAL (Modal)
+//  ID İLE İPTAL
 // ===============================
 router.delete('/cancel-id/:id', async (req, res) => {
   const appointmentId = req.params.id;
