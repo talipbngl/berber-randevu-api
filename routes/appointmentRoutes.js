@@ -162,6 +162,7 @@ router.get('/slots', async (req, res) => {
 //  RANDEVU AL
 // ===============================
 router.post('/book', async (req, res) => {
+  console.log("✅ /api/book HIT", { body: req.body });
   const { name, phone_number, date, time, service_type } = req.body;
 
   if (!name || !phone_number || !date || !time || !service_type) {
@@ -208,8 +209,9 @@ router.post('/book', async (req, res) => {
 
     await newAppointment.save();
 
-    // Mail kullanıcıyı bekletmesin
+    console.log("✅ Mail fonksiyonu çağrılacak");
     sendAppointmentConfirmation(name, phone_number, date, time, service_type);
+    console.log("✅ Mail fonksiyonu çağrıldı");
 
     res.status(201).send({
       message: 'Randevunuz başarıyla oluşturuldu.',
