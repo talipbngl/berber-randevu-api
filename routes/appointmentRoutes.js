@@ -12,6 +12,23 @@ const Schedule = require('../models/Schedule');
 const getServiceDurationMinutes = () => 30;
 
 // ===============================
+//  TIME HELPERS (TZ/parse sorunlarını bitirir)
+// ===============================
+function parseLocalDateOnly(dateStr) {
+  // "YYYY-MM-DD" -> local Date (00:00)
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+function parseLocalDateTime(dateStr, timeStr) {
+  // "YYYY-MM-DD" + "HH:mm" -> local Date
+  const [y, m, d] = String(dateStr).split('-').map(Number);
+  const [hh, mm] = String(timeStr).split(':').map(Number);
+  if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return new Date('invalid');
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+
+// ===============================
 //  MAIL (SADECE GMAIL OAUTH2 - Render uyumlu)
 // ===============================
 function buildGmailOAuthClient() {
@@ -48,7 +65,6 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
   try {
     const tokenResponse = await oAuth2Client.getAccessToken();
     accessToken = tokenResponse?.token;
-
     if (!accessToken) throw new Error('Access token alınamadı (token boş).');
   } catch (err) {
     console.error('E-POSTA: Access token alma hatası:', err?.message || err);
@@ -71,13 +87,15 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
     socketTimeout: 20000,
   });
 
-  const appointmentTime = new Date(`${date} ${time}`);
+  const appointmentTime = parseLocalDateTime(date, time);
+
   const formattedDate = appointmentTime.toLocaleDateString('tr-TR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
+
   const formattedTime = appointmentTime.toLocaleTimeString('tr-TR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -119,7 +137,7 @@ router.get('/slots', async (req, res) => {
   if (!date) return res.status(400).send({ message: 'Tarih (date) parametresi gereklidir.' });
 
   try {
-    const queryDate = new Date(date);
+    const queryDate = parseLocalDateOnly(date);
     if (Number.isNaN(queryDate.getTime())) {
       return res.status(400).send({ message: 'Geçersiz tarih formatı.' });
     }
@@ -134,8 +152,8 @@ router.get('/slots', async (req, res) => {
     const { start_shift, end_shift } = schedule;
     const appointmentDuration = 30;
 
-    let currentTime = new Date(`${date} ${start_shift}`);
-    const endTime = new Date(`${date} ${end_shift}`);
+    let currentTime = parseLocalDateTime(date, start_shift);
+    const endTime = parseLocalDateTime(date, end_shift);
 
     if (Number.isNaN(currentTime.getTime()) || Number.isNaN(endTime.getTime()) || currentTime >= endTime) {
       return res.status(400).send({ message: 'Çalışma saatleri hatalı tanımlanmış.' });
@@ -152,10 +170,8 @@ router.get('/slots', async (req, res) => {
       currentTime = new Date(currentTime.getTime() + appointmentDuration * 60000);
     }
 
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
+    const startOfDay = parseLocalDateOnly(date);
+    const endOfDay = new Date(startOfDay);
     endOfDay.setHours(23, 59, 59, 999);
 
     const bookedAppointments = await Appointment.find({
@@ -199,14 +215,11 @@ router.post('/book', async (req, res) => {
 
   const durationMinutes = getServiceDurationMinutes(service_type);
 
-  const [hour, minute] = String(time).split(':').map(Number);
-  const startDateTime = new Date(date);
-
-  if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(hour) || Number.isNaN(minute)) {
+  const startDateTime = parseLocalDateTime(date, time);
+  if (Number.isNaN(startDateTime.getTime())) {
     return res.status(400).send({ message: 'Tarih veya saat formatı geçersiz.' });
   }
 
-  startDateTime.setHours(hour, minute, 0, 0);
   const endDateTime = new Date(startDateTime.getTime() + durationMinutes * 60000);
 
   try {
@@ -325,14 +338,10 @@ router.delete('/cancel', async (req, res) => {
     return res.status(400).send({ message: 'Telefon, tarih ve saat zorunludur.' });
   }
 
-  const [hour, minute] = String(time).split(':').map(Number);
-  const startDateTime = new Date(date);
-
-  if (Number.isNaN(startDateTime.getTime()) || Number.isNaN(hour) || Number.isNaN(minute)) {
+  const startDateTime = parseLocalDateTime(date, time);
+  if (Number.isNaN(startDateTime.getTime())) {
     return res.status(400).send({ message: 'Tarih veya saat formatı geçersiz.' });
   }
-
-  startDateTime.setHours(hour, minute, 0, 0);
 
   try {
     const user = await User.findOne({ phone_number });
