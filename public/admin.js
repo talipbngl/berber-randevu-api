@@ -20,15 +20,21 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  function formatDateTime(dateString) {
-    return new Date(dateString).toLocaleString('tr-TR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
+  const TR_TZ = "Europe/Istanbul";
+
+function formatDateTime(dateString) {
+  // DB UTC tutsa bile ekranda her zaman Türkiye saatini göster
+  return new Date(dateString).toLocaleString("tr-TR", {
+    timeZone: TR_TZ,
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 
   function getStatusStyle(status) {
     switch (status) {
@@ -137,7 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const translated = translateStatus(app.status);
 
       const isPastAndPending =
-        app.status === 'Pending' && (new Date(app.start_time) < new Date(Date.now() - 5 * 3600000));
+  app.status === "Pending" && (new Date(app.start_time).getTime() < (Date.now() - 5 * 3600000));
+
 
       let actionButtons = '';
       if (app.status === 'Pending') {
