@@ -24,10 +24,17 @@ const adminAuth = (req, res, next) => {
   next();
 };
 
-// 1) Randevuları listele
+// 1) Randevuları listele (Güncellendi: Geçmiş günler gizlendi)
 router.get('/appointments', adminAuth, async (req, res) => {
   try {
-    const appointments = await Appointment.find({})
+    // Bugünün başlangıcı (00:00:00)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Sadece başlangıç zamanı bugünün başından büyük olanları getir
+    const appointments = await Appointment.find({
+      start_time: { $gte: startOfToday }
+    })
       .populate('user_id', 'name phone_number')
       .sort({ start_time: 1 });
 
