@@ -53,17 +53,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 app.get('/manifest.json', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'manifest.json'));
+  res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
 });
-
 app.get('/sw.js', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'sw.js'));
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
-
-app.get('/icon-512.jpg', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'icon-512.jpg'));
-});
-
 app.get('/admin.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
