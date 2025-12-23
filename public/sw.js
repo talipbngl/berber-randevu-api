@@ -1,33 +1,30 @@
-const CACHE_NAME = 'kyk-berber-v1.1'; // Versiyonu artırarak güncellemeyi zorlayabiliriz
+const CACHE_NAME = 'kyk-berber-v1.2';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/app.js',
+  '/manifest.json'
+];
 
 self.addEventListener('install', (event) => {
-  console.log('Service Worker: Kuruluyor...');
-  // Kurulum anında beklemeden aktif olması için
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker: Aktif Edildi');
-  // Eski cache'leri temizleme mantığı (isteğe bağlı)
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Service Worker: Eski Cache Siliniyor');
-            return caches.delete(cache);
-          }
-        })
-      );
+    caches.keys().then((keys) => {
+      return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
     })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first (Önce ağ) yaklaşımı: Güncel veri her zaman daha önemli
   event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
