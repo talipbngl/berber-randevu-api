@@ -255,5 +255,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {
       scheduleMessage.textContent = 'Hata oluştu.';
     }
+    if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('PWA Kayıt Başarılı:', reg.scope))
+      .catch(err => console.log('PWA Kayıt Hatası:', err));
+  });
+}
   });
 });

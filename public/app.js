@@ -504,6 +504,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // min date = today
   const today = new Date().toISOString().split('T')[0];
   dateInput.setAttribute('min', today);
+  if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('PWA Kayıt Başarılı:', reg.scope))
+      .catch(err => console.log('PWA Kayıt Hatası:', err));
+  });
+}
 
   updateStep(1);
 });
