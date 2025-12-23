@@ -506,9 +506,21 @@ document.addEventListener('DOMContentLoaded', () => {
   dateInput.setAttribute('min', today);
   if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('PWA Kayıt Başarılı:', reg.scope))
-      .catch(err => console.log('PWA Kayıt Hatası:', err));
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('PWA Kayıt Başarılı:', reg.scope);
+      
+      // Yeni bir güncelleme geldiğinde kontrol et
+      reg.onupdatefound = () => {
+        const installingWorker = reg.installing;
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Kullanıcıya yeni sürüm olduğunu bildir veya otomatik yenile
+            console.log('Yeni içerik mevcut, lütfen sayfayı yenileyin.');
+            // window.location.reload(); // İstersen direkt yenileyebilirsin
+          }
+        };
+      };
+    }).catch(err => console.log('PWA Kayıt Hatası:', err));
   });
 }
 
