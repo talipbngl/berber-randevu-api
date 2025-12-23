@@ -1,4 +1,4 @@
-// admin.js - revize
+// admin.js - WhatsApp Entegrasyonu ve Modernize Edilmiş Liste
 
 document.addEventListener('DOMContentLoaded', () => {
   const API_BASE_URL = window.location.origin;
@@ -22,20 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const TR_TZ = "Europe/Istanbul";
 
-function formatDateTime(dateString) {
-  // DB UTC tutsa bile ekranda her zaman Türkiye saatini göster
-  return new Date(dateString).toLocaleString("tr-TR", {
-    timeZone: TR_TZ,
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
+  // Tarih ve Saat Formatlama
+  function formatDateTime(dateString) {
+    return new Date(dateString).toLocaleString("tr-TR", {
+      timeZone: TR_TZ,
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
 
-
+  // Durum Renkleri
   function getStatusStyle(status) {
     switch (status) {
       case 'Completed': return 'bg-green-100 text-green-800';
@@ -45,6 +45,7 @@ function formatDateTime(dateString) {
     }
   }
 
+  // Durum Türkçeleştirme
   function translateStatus(status) {
     switch (status) {
       case 'Completed': return 'Tamamlandı';
@@ -54,6 +55,7 @@ function formatDateTime(dateString) {
     }
   }
 
+  // Randevu Durum Güncelleme
   async function handleStatusUpdate(id, newStatus, button) {
     if (!adminPass) {
       alert('Yetkiniz sona ermiş veya parola eksik. Lütfen sayfayı yenileyin.');
@@ -92,13 +94,14 @@ function formatDateTime(dateString) {
       }
     } catch (error) {
       console.error('Durum güncelleme hatası:', error);
-      alert('Ağ hatası oluştu, durum güncellenemedi.');
+      alert('Ağ hatası oluştu.');
     } finally {
       button.disabled = false;
       button.textContent = originalText;
     }
   }
 
+  // Randevuları Çekme
   async function fetchAppointments(password) {
     listMessage.textContent = 'Randevular yükleniyor...';
     const url = `${API_BASE_URL}/api/admin/appointments?pass=${password}`;
@@ -121,10 +124,11 @@ function formatDateTime(dateString) {
       listMessage.textContent = '';
     } catch (error) {
       console.error('Randevu çekme hatası:', error);
-      listMessage.textContent = 'Sunucuya ulaşılamıyor veya veri çekilemiyor.';
+      listMessage.textContent = 'Sunucuya ulaşılamıyor.';
     }
   }
 
+  // Randevuları Tabloya Basma
   function renderAppointments(appointments) {
     appointmentsBody.innerHTML = '';
 
@@ -136,58 +140,68 @@ function formatDateTime(dateString) {
 
     appointments.forEach((app) => {
       const row = appointmentsBody.insertRow();
-      row.className = 'hover:bg-gray-50';
+      row.className = 'hover:bg-gray-50 border-b transition duration-150';
       row.id = `appointment-${app._id}`;
 
       const style = getStatusStyle(app.status);
       const translated = translateStatus(app.status);
+      const phone = app.user_id ? app.user_id.phone_number : 'N/A';
+      
+      // WhatsApp Link Hazırlığı
+      const cleanPhone = phone.replace(/\D/g, ''); // Sadece rakamlar
+      const whatsappUrl = `https://wa.me/${cleanPhone}`;
 
-      const isPastAndPending =
-  app.status === "Pending" && (new Date(app.start_time).getTime() < (Date.now() - 5 * 3600000));
-
+      // Geçmiş randevu kontrolü (Kilitli butonlar için)
+      const isPastAndPending = app.status === "Pending" && (new Date(app.start_time).getTime() < (Date.now() - 5 * 3600000));
 
       let actionButtons = '';
       if (app.status === 'Pending') {
         actionButtons = `
           <button type="button" data-id="${app._id}" data-status="Completed"
-            class="update-status-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs rounded shadow-sm"
+            class="update-status-btn bg-green-500 hover:bg-green-600 text-white px-3 py-1 text-xs rounded shadow-sm mr-1"
             ${isPastAndPending ? 'disabled' : ''}>
             Tamamla
           </button>
           <button type="button" data-id="${app._id}" data-status="Canceled"
-            class="update-status-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs rounded ml-2 shadow-sm">
-            İptal Et
+            class="update-status-btn bg-red-500 hover:bg-red-600 text-white px-3 py-1 text-xs rounded shadow-sm">
+            İptal
           </button>
         `;
       } else {
-        actionButtons = `<span class="text-gray-500 text-xs">İşlem Yapıldı</span>`;
+        actionButtons = `<span class="text-gray-400 text-xs italic">Tamamlandı</span>`;
       }
 
       row.innerHTML = `
-        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${formatDateTime(app.start_time)}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${app.user_id ? app.user_id.name : 'N/A'}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${app.user_id ? app.user_id.phone_number : 'N/A'}</td>
-        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${app.service_type}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">${formatDateTime(app.start_time)}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">${app.user_id ? app.user_id.name : 'N/A'}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+          <div class="flex items-center space-x-2">
+            <span>${phone}</span>
+            <a href="${whatsappUrl}" target="_blank" class="text-green-500 hover:text-green-600 transition transform hover:scale-110" title="WhatsApp Mesaj Gönder">
+              <i class="fab fa-whatsapp text-lg"></i>
+            </a>
+          </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${app.service_type}</td>
         <td class="px-6 py-4 whitespace-nowrap">
-          <span id="status-label-${app._id}" class="inline-flex px-3 text-xs font-semibold leading-5 rounded-full ${style}">
+          <span id="status-label-${app._id}" class="inline-flex px-3 text-xs font-bold leading-5 rounded-full ${style}">
             ${translated}
           </span>
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" id="actions-${app._id}">
           ${actionButtons}
         </td>
-        <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-400">${app._id}</td>
+        <td class="px-6 py-4 whitespace-nowrap text-[10px] text-gray-300 uppercase">${app._id.slice(-6)}</td>
       `;
     });
   }
 
+  // Admin Giriş Formu
   authForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-
     const passInput = document.getElementById('admin-pass');
     const password = passInput.value.trim();
-
-    authMessage.textContent = 'Kontrol ediliyor...';
+    authMessage.textContent = 'Giriş yapılıyor...';
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/appointments?pass=${password}`);
@@ -196,44 +210,37 @@ function formatDateTime(dateString) {
         passInput.value = '';
         return;
       }
-
       if (response.ok) {
         adminPass = password;
         authSection.classList.add('hidden');
         adminContent.classList.remove('hidden');
         fetchAppointments(adminPass);
-      } else {
-        authMessage.textContent = `Giriş başarısız (${response.status}).`;
       }
     } catch {
-      authMessage.textContent = 'Ağ hatası. Sunucuya ulaşılamıyor.';
+      authMessage.textContent = 'Bağlantı hatası.';
     }
   });
 
+  // Delegated Click Event (Tablodaki butonlar için)
   appointmentsBody.addEventListener('click', (e) => {
     const btn = e.target.closest('.update-status-btn');
     if (!btn) return;
-
     const id = btn.getAttribute('data-id');
     const newStatus = btn.getAttribute('data-status');
-
-    const confirmMsg = `Randevuyu "${translateStatus(newStatus)}" olarak işaretlemek istiyor musunuz?`;
-    if (confirm(confirmMsg)) handleStatusUpdate(id, newStatus, btn);
+    if (confirm(`Randevuyu "${translateStatus(newStatus)}" olarak güncellemek istiyor musunuz?`)) {
+      handleStatusUpdate(id, newStatus, btn);
+    }
   });
 
+  // Çalışma Saatleri Formu
   scheduleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!adminPass) {
-      scheduleMessage.className = 'mt-3 font-semibold text-red-600';
-      scheduleMessage.textContent = 'Oturum sona ermiş. Yenileyip tekrar giriş yapın.';
-      return;
-    }
+    if (!adminPass) return;
 
     const day = document.getElementById('day').value;
     const start = document.getElementById('start').value;
     const end = document.getElementById('end').value;
-
-    scheduleMessage.textContent = 'Güncelleniyor...';
+    scheduleMessage.textContent = 'Kaydediliyor...';
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/admin/schedule?pass=${adminPass}`, {
@@ -241,19 +248,12 @@ function formatDateTime(dateString) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ day_of_week: day, start_shift: start, end_shift: end }),
       });
-
-      const data = await response.json();
-
       if (response.ok) {
         scheduleMessage.className = 'mt-3 font-semibold text-green-600';
-        scheduleMessage.textContent = `✅ ${data.message} (${data.schedule.day_of_week}. gün)`;
-      } else {
-        scheduleMessage.className = 'mt-3 font-semibold text-red-600';
-        scheduleMessage.textContent = `Hata: ${data.message}`;
+        scheduleMessage.textContent = `✅ Başarıyla güncellendi.`;
       }
     } catch {
-      scheduleMessage.className = 'mt-3 font-semibold text-red-600';
-      scheduleMessage.textContent = 'Ağ hatası. Güncellenemedi.';
+      scheduleMessage.textContent = 'Hata oluştu.';
     }
   });
 });

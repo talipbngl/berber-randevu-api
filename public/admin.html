@@ -5,46 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yönetim Paneli | KYK Berber</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
     body { font-family: 'Inter', sans-serif; }
     .bg-primary { background-color: #004d99; }
     .text-primary { color: #004d99; }
-    .table-header { background-color: #f1f5f9; }
+    .table-header { background-color: #f8fafc; }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-8">
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
 
-  <div class="max-w-6xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-xl">
+  <div class="max-w-6xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-2xl border border-gray-100">
 
-    <header class="text-center mb-10 border-b pb-5">
-      <h1 class="text-4xl font-extrabold text-gray-900 mb-2 flex items-center justify-center space-x-3">
-        <i class="fas fa-lock text-3xl text-primary"></i>
-        <span>Yönetim Paneli</span>
-      </h1>
-      <p class="text-md text-gray-500">Randevuları ve Çalışma Saatlerini Yönetin</p>
+    <header class="text-center mb-10 border-b pb-6">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 rounded-full mb-4">
+        <i class="fas fa-user-shield text-3xl text-primary"></i>
+      </div>
+      <h1 class="text-4xl font-extrabold text-gray-900 mb-2">Yönetim Paneli</h1>
+      <p class="text-md text-gray-500 font-medium">Randevu Takibi ve Çalışma Saatleri</p>
     </header>
 
-    <div id="auth-section">
-      <form id="auth-form" class="max-w-sm mx-auto p-6 bg-gray-50 rounded-lg shadow-md">
-        <label for="admin-pass" class="block text-lg font-semibold text-gray-700 mb-3">Yönetici Parolası:</label>
-        <input type="password" id="admin-pass" required
-               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 shadow-sm mb-4" />
+    <div id="auth-section" class="py-10">
+      <form id="auth-form" class="max-w-sm mx-auto p-8 bg-gray-50 rounded-2xl shadow-inner border border-gray-200">
+        <label for="admin-pass" class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Yönetici Parolası</label>
+        <input type="password" id="admin-pass" required placeholder="••••••••"
+               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm mb-4 outline-none transition-all" />
         <button type="submit"
-                class="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition duration-150">
+                class="w-full py-3 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 transform active:scale-95 transition duration-150 shadow-lg">
           Giriş Yap
         </button>
-        <p id="auth-message" class="text-center mt-3 text-red-500"></p>
+        <p id="auth-message" class="text-center mt-4 text-sm font-semibold text-red-500"></p>
       </form>
     </div>
 
-    <div id="admin-content" class="hidden">
+    <div id="admin-content" class="hidden space-y-10">
 
-      <section class="mb-10 p-6 border rounded-lg shadow-sm">
-        <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📅 Çalışma Saatleri Güncelleme</h2>
-        <form id="schedule-form" class="flex flex-wrap items-end gap-4 max-w-xl">
-          <div>
-            <label for="day" class="block text-sm font-medium text-gray-700">Gün Seçin:</label>
-            <select id="day" required class="px-3 py-2 border rounded-lg bg-white">
+      <section class="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+        <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+          <i class="fas fa-clock text-primary mr-3"></i> Çalışma Saatlerini Güncelle
+        </h2>
+        <form id="schedule-form" class="flex flex-wrap items-end gap-6">
+          <div class="flex-1 min-w-[150px]">
+            <label for="day" class="block text-xs font-bold text-gray-500 mb-2 uppercase">Gün</label>
+            <select id="day" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none">
               <option value="1">Pazartesi</option>
               <option value="2">Salı</option>
               <option value="3">Çarşamba</option>
@@ -54,47 +58,58 @@
               <option value="7">Pazar</option>
             </select>
           </div>
-          <div>
-            <label for="start" class="block text-sm font-medium text-gray-700">Başlangıç Saati:</label>
-            <input type="time" id="start" required class="px-3 py-2 border rounded-lg bg-white" />
+          <div class="flex-1 min-w-[120px]">
+            <label for="start" class="block text-xs font-bold text-gray-500 mb-2 uppercase">Açılış</label>
+            <input type="time" id="start" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
           </div>
-          <div>
-            <label for="end" class="block text-sm font-medium text-gray-700">Bitiş Saati:</label>
-            <input type="time" id="end" required class="px-3 py-2 border rounded-lg bg-white" />
+          <div class="flex-1 min-w-[120px]">
+            <label for="end" class="block text-xs font-bold text-gray-500 mb-2 uppercase">Kapanış</label>
+            <input type="time" id="end" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" />
           </div>
-          <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition duration-150">
-            Kaydet
+          <button type="submit" class="bg-primary text-white px-8 py-2.5 rounded-lg hover:bg-blue-900 transition shadow-md font-bold">
+            Güncelle
           </button>
         </form>
-        <p id="schedule-message" class="mt-3 font-semibold"></p>
+        <p id="schedule-message" class="mt-4 text-sm font-medium"></p>
       </section>
 
       <section>
-        <h2 class="text-2xl font-bold text-primary mb-4 border-b pb-2">📋 Tüm Randevular</h2>
-        <div class="overflow-x-auto bg-white rounded-lg shadow">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="table-header">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tarih / Saat</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Müşteri Adı</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Telefon</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Hizmet</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Durum</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Eylem</th>
-              <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Randevu ID</th>
-            </tr>
-            </thead>
-            <tbody id="appointments-body" class="divide-y divide-gray-200"></tbody>
-          </table>
+        <div class="flex justify-between items-end mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-list-ul text-primary mr-3"></i> Güncel Randevular
+          </h2>
+          <span id="randevu-sayisi" class="bg-blue-100 text-primary text-xs font-bold px-3 py-1 rounded-full"></span>
         </div>
-        <p id="randevu-sayisi" class="text-sm text-gray-600 mt-4"></p>
-        <p id="list-message" class="text-red-500 mt-4 font-semibold"></p>
+
+        <div class="overflow-hidden border border-gray-200 rounded-2xl shadow-sm">
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="table-header">
+                <tr>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tarih / Saat</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Müşteri</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">İletişim</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hizmet</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Durum</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Eylem</th>
+                  <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider text-center">ID</th>
+                </tr>
+              </thead>
+              <tbody id="appointments-body" class="bg-white divide-y divide-gray-100 text-sm">
+                </tbody>
+            </table>
+          </div>
+        </div>
+        <p id="list-message" class="text-center mt-6 text-gray-400 font-medium"></p>
       </section>
 
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+  <footer class="text-center mt-8 text-gray-400 text-xs">
+    &copy; 2025 KYK Berber Randevu Sistemi | Yönetim Paneli
+  </footer>
+
   <script src="admin.js"></script>
 </body>
 </html>
