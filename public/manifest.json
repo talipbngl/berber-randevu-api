@@ -2,25 +2,20 @@
   "name": "KYK Berber Randevu",
   "short_name": "KYK Berber",
   "description": "Çukurova KYK Berber Randevu Sistemi",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#004d99",
   "icons": [
     {
-      "src": "https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg",
-      "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg",
+      "src": "/icon-512.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "https://img.freepik.com/premium-vektor/siyah-beyaz-berber-logosu-tasarimi_712567-4598.jpg",
+      "src": "/icon-512.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "maskable"
