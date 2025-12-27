@@ -7,6 +7,7 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const Schedule = require('../models/Schedule');
+const DailySchedule = require('../models/DailySchedule');
 
 // Tüm hizmetler 30 dk
 const getServiceDurationMinutes = () => 30;
@@ -130,10 +131,7 @@ async function sendAppointmentConfirmation(name, phone, date, time, service) {
 }
 
 // ===============================
-//  SLOT LISTELEME
-// ===============================
-// ===============================
-//  SLOT LISTELEME (Güncellendi: Geçmiş saatler filtrelendi)
+//  SLOT LISTELEME (DailySchedule override + geçmiş saat filtresi)
 // ===============================
 router.get('/slots', async (req, res) => {
   const { date } = req.query;
@@ -141,41 +139,55 @@ router.get('/slots', async (req, res) => {
 
   try {
     const queryDate = parseLocalDateOnly(date);
-    const now = new Date(); // Şu anki zaman (Türkiye saatiyle uyumlu)
-    
+    const now = new Date();
+
     if (Number.isNaN(queryDate.getTime())) {
       return res.status(400).send({ message: 'Geçersiz tarih formatı.' });
     }
 
     const dayOfWeek = queryDate.getDay() === 0 ? 7 : queryDate.getDay();
-    const schedule = await Schedule.findOne({ day_of_week: dayOfWeek, barber_id: 1 });
-    
-    if (!schedule) {
+
+    // ✅ 1) Önce "o güne özel" saat var mı?
+    const daily = await DailySchedule.findOne({ date: String(date), barber_id: 1 });
+
+    // ✅ 2) Yoksa haftalık düzene düş
+    const weekly = daily
+      ? null
+      : await Schedule.findOne({ day_of_week: dayOfWeek, barber_id: 1 });
+
+    const scheduleToUse = daily || weekly;
+
+    if (!scheduleToUse) {
       return res.send({ date, all_slots: [], booked_slots: [], message: 'Bu günde dükkan kapalıdır.' });
     }
 
-    const { start_shift, end_shift } = schedule;
+    const { start_shift, end_shift } = scheduleToUse;
     const appointmentDuration = 30;
 
     let currentTime = parseLocalDateTime(date, start_shift);
     const endTime = parseLocalDateTime(date, end_shift);
 
+    // Bugün mü? (geçmiş saat filtresi sadece bugün çalışsın)
+    const isToday =
+      queryDate.getFullYear() === now.getFullYear() &&
+      queryDate.getMonth() === now.getMonth() &&
+      queryDate.getDate() === now.getDate();
+
     const allSlots = [];
     while (currentTime < endTime) {
       if (new Date(currentTime.getTime() + appointmentDuration * 60000) > endTime) break;
 
-      // --- GÜNCELLEME: Geçmiş saat kontrolü ---
-      // Eğer seçilen tarih bugünse ve slot saati şu anki saatten küçükse listeye ekleme
-      if (currentTime > now) {
+      // ✅ sadece bugünse geçmiş saatleri filtrele
+      if (!isToday || currentTime > now) {
         const slotStr =
           String(currentTime.getHours()).padStart(2, '0') + ':' + String(currentTime.getMinutes()).padStart(2, '0');
         allSlots.push(slotStr);
       }
-      
+
       currentTime = new Date(currentTime.getTime() + appointmentDuration * 60000);
     }
 
-    // ... (Geri kalan booked_slots mantığı aynı kalıyor)
+    // booked slots (aynı)
     const startOfDay = parseLocalDateOnly(date);
     const endOfDay = new Date(startOfDay);
     endOfDay.setHours(23, 59, 59, 999);
@@ -249,13 +261,13 @@ router.post('/book', async (req, res) => {
     if (conflict) return res.status(409).send({ message: 'Bu saat dilimi az önce doldu.' });
 
     const newAppointment = new Appointment({
-  user_id: user._id,
-  start_time: startDateTime,
-  end_time: endDateTime,
-  service_type,
-  // Randevu tarihinden tam 10 gün sonra silinmesi için:
-  expireAt: new Date(startDateTime.getTime() + 10 * 24 * 60 * 60 * 1000) 
-});
+      user_id: user._id,
+      start_time: startDateTime,
+      end_time: endDateTime,
+      service_type,
+      // Randevu tarihinden tam 10 gün sonra silinmesi için:
+      expireAt: new Date(startDateTime.getTime() + 10 * 24 * 60 * 60 * 1000) 
+    });
 
     await newAppointment.save();
     sendAppointmentConfirmation(name, phone_number, date, time, service_type);

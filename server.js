@@ -15,10 +15,11 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // --- MongoDB Bağlantısı ---
-const MONGODB_URI = process.env.MONGODB_URI;
+// ✅ Hem MONGODB_URI hem MONGO_URI destekle (env karışıklığı çok oluyor)
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 if (!MONGODB_URI) {
-  console.error('HATA: MONGODB_URI ortam değişkeni tanımlanmamış. Bağlantı yapılamıyor.');
+  console.error('HATA: MONGODB_URI (veya MONGO_URI) ortam değişkeni tanımlanmamış. Bağlantı yapılamıyor.');
 } else {
   mongoose
     .connect(MONGODB_URI)
@@ -29,7 +30,7 @@ if (!MONGODB_URI) {
 // --- Rate Limit (API için) ---
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30, // 1 dakikada 30 istek (10 biraz agresifti)
+  max: 30, // 1 dakikada 30 istek
   message: 'Çok fazla istek gönderdiniz. Lütfen 1 dakika sonra tekrar deneyin.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -43,10 +44,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API Routes ---
-// Not: admin paneli limitlenmesin istersen /api/admin’a da limiter koyabiliriz.
 // Şimdilik ana API limitli, admin ayrı.
 app.use('/api', apiLimiter, appointmentRoutes);
 app.use('/api/admin', adminRoutes);
+
+// ✅ API 404 (debug için çok iyi)
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'API endpoint bulunamadı.' });
+});
 
 // --- Sayfalar ---
 app.get('/', (req, res) => {

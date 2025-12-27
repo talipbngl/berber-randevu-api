@@ -146,13 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const style = getStatusStyle(app.status);
       const translated = translateStatus(app.status);
       const phone = app.user_id ? app.user_id.phone_number : 'N/A';
-      
+
       // WhatsApp Link Hazırlığı
       const cleanPhone = phone.replace(/\D/g, ''); // Sadece rakamlar
       const whatsappUrl = `https://wa.me/${cleanPhone}`;
 
       // Geçmiş randevu kontrolü (Kilitli butonlar için)
-      const isPastAndPending = app.status === "Pending" && (new Date(app.start_time).getTime() < (Date.now() - 5 * 3600000));
+      const isPastAndPending =
+        app.status === "Pending" && (new Date(app.start_time).getTime() < (Date.now() - 5 * 3600000));
 
       let actionButtons = '';
       if (app.status === 'Pending') {
@@ -232,35 +233,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Çalışma Saatleri Formu
+  // ✅ Çalışma Saatleri Formu (ARTIK TARİHE ÖZEL)
   scheduleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!adminPass) return;
 
-    const day = document.getElementById('day').value;
+    // ✅ admin.html’de artık <input type="date" id="date"> olmalı
+    const dateEl = document.getElementById('date');
+    const date = dateEl ? dateEl.value : '';
+
     const start = document.getElementById('start').value;
     const end = document.getElementById('end').value;
+
+    if (!date) {
+      scheduleMessage.className = 'mt-3 font-semibold text-red-600';
+      scheduleMessage.textContent = 'Lütfen tarih seçin.';
+      return;
+    }
+
     scheduleMessage.textContent = 'Kaydediliyor...';
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/schedule?pass=${adminPass}`, {
+      // ✅ yeni endpoint: sadece bu gün için
+      const response = await fetch(`${API_BASE_URL}/api/admin/schedule-day?pass=${adminPass}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ day_of_week: day, start_shift: start, end_shift: end }),
+        body: JSON.stringify({ date, start_shift: start, end_shift: end }),
       });
+
+      const data = await response.json().catch(() => ({}));
+
       if (response.ok) {
         scheduleMessage.className = 'mt-3 font-semibold text-green-600';
-        scheduleMessage.textContent = `✅ Başarıyla güncellendi.`;
+        scheduleMessage.textContent = '✅ Sadece bu tarih için güncellendi.';
+      } else {
+        scheduleMessage.className = 'mt-3 font-semibold text-red-600';
+        scheduleMessage.textContent = data.message || 'Saat güncelleme başarısız.';
       }
     } catch {
+      scheduleMessage.className = 'mt-3 font-semibold text-red-600';
       scheduleMessage.textContent = 'Hata oluştu.';
     }
+
+    // (Senin kodunda burada vardı, dokunmadım ama idealde tek yerde register edilmeli)
     if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('PWA Kayıt Başarılı:', reg.scope))
-      .catch(err => console.log('PWA Kayıt Hatası:', err));
-  });
-}
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('PWA Kayıt Başarılı:', reg.scope))
+          .catch(err => console.log('PWA Kayıt Hatası:', err));
+      });
+    }
   });
 });
