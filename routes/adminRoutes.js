@@ -99,9 +99,14 @@ router.post('/schedule-day', adminAuth, async (req, res) => {
 
     res.status(200).json({ message: 'Sadece bu tarih için saatler güncellendi.', daily });
   } catch (error) {
-    console.error('Admin Gün Bazlı Saat Güncelleme Hatası:', error);
-    res.status(500).send({ message: 'Gün bazlı saatler güncellenirken hata oluştu.' });
-  }
+  console.error('Admin Gün Bazlı Saat Güncelleme Hatası:', error);
+  res.status(500).send({
+    message: 'Gün bazlı saatler güncellenirken hata oluştu.',
+    details: error?.message || String(error),
+    code: error?.code,
+  });
+}
+
 });
 
 /**
